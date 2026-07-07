@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neusoft.elderlycare.meal.mapper.MealMapper">
+
+    <select id="selectMealPage" resultType="com.neusoft.elderlycare.entity.Meal">
+        SELECT m.id, m.meal_no, m.customer_id, m.breakfast, m.lunch, m.dinner,
+               m.special_need, m.meal_date, m.meal_img,
+               m.create_time, m.update_time,
+               c.name AS customer_name
+        FROM meal m
+        LEFT JOIN customer c ON m.customer_id = c.id AND c.deleted = 0
+        WHERE m.deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (m.meal_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY m.create_time DESC
+    </select>
+
+</mapper>

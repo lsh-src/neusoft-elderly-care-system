@@ -1,0 +1,148 @@
+:root {
+  --care-ink: #1e2a27;
+  --care-muted: #6b7a75;
+  --care-green: #2f6f62;
+  --care-sage: #dfeadf;
+  --care-warm: #f6efe3;
+  --care-gold: #d9a441;
+  font-family: "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1200px;
+  color: var(--care-ink);
+  background:
+    radial-gradient(circle at top left, rgba(217, 164, 65, 0.2), transparent 28rem),
+    linear-gradient(135deg, #f8f5ee 0%, #edf4ef 48%, #f7efe5 100%);
+}
+
+.page-card {
+  border: 0;
+  border-radius: 22px;
+  box-shadow: 0 18px 45px rgba(55, 82, 72, 0.12);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 12px;
+}
+
+.fade-up {
+  animation: fadeUp 0.45s ease both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== AI 页面公共样式（与 CrudPage 保持一致） ===== */
+
+/* 主按钮 — 绿色主题 */
+.ai-page .el-button--primary {
+  background: #2f6f62;
+  border-color: #2f6f62;
+  border-radius: 12px;
+}
+
+.ai-page .el-button--primary:hover {
+  background: #275d52;
+  border-color: #275d52;
+}
+
+.ai-page .el-button--primary.is-plain {
+  background: transparent;
+  color: #2f6f62;
+  border-color: #c5e5dd;
+}
+
+.ai-page .el-button--primary.is-plain:hover {
+  background: rgba(47, 111, 98, 0.06);
+  color: #2f6f62;
+  border-color: #2f6f62;
+}
+
+/* 输入框 — 绿色边框 + 焦点态 */
+.ai-page .el-input__wrapper,
+.ai-page .el-textarea__inner {
+  border-radius: 12px;
+  border: 1.5px solid #d5e5e0;
+  box-shadow: none !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ai-page .el-input__wrapper:hover,
+.ai-page .el-textarea__inner:hover {
+  border-color: #8abfb0;
+}
+
+.ai-page .el-input__wrapper.is-focus,
+.ai-page .el-textarea__inner:focus {
+  border-color: #2f6f62;
+  box-shadow: 0 0 0 3px rgba(47, 111, 98, 0.1) !important;
+}
+
+.ai-page .el-select .el-input__wrapper {
+  border-radius: 12px;
+  border: 1.5px solid #d5e5e0;
+  box-shadow: none !important;
+}
+
+.ai-page .el-select .el-input__wrapper:hover {
+  border-color: #8abfb0;
+}
+
+.ai-page .el-select .el-input.is-focus .el-input__wrapper {
+  border-color: #2f6f62;
+  box-shadow: 0 0 0 3px rgba(47, 111, 98, 0.1) !important;
+}
+
+/* 卡片 — 统一阴影和圆角 */
+.ai-page .ai-card {
+  border: none;
+  border-radius: 22px;
+  box-shadow: 0 18px 45px rgba(55, 82, 72, 0.08);
+}
+
+/* 结果卡片 — 左侧绿色强调条 */
+.ai-page .result-card {
+  border-left: 4px solid #2f6f62;
+}
+
+/* 标签文字 */
+.ai-page .el-form-item__label {
+  font-weight: 600;
+  color: #244b42;
+}
+
+/* 滑块 — 绿色主题 */
+.ai-page .el-slider__bar {
+  background-color: #2f6f62;
+}
+
+.ai-page .el-slider__button {
+  border-color: #2f6f62;
+}
+
+.ai-page .el-slider__stop {
+  background-color: #d5e5e0;
+}

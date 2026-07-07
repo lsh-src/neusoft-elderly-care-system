@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neusoft.elderlycare.checkin.mapper.CheckOutMapper">
+
+    <select id="selectCheckOutPage" resultType="com.neusoft.elderlycare.entity.CheckOut">
+        SELECT co.id, co.checkout_no, co.customer_id, co.checkout_date,
+               co.reason, co.operator,
+               co.create_time, co.update_time,
+               c.name AS customer_name
+        FROM check_out co
+        LEFT JOIN customer c ON co.customer_id = c.id AND c.deleted = 0
+        WHERE co.deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (co.checkout_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY co.create_time DESC
+    </select>
+
+</mapper>

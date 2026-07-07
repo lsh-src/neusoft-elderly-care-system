@@ -1,0 +1,110 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: elderlycare-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+        register-enabled: true
+      config:
+        enabled: false
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 认证服务
+        - id: auth
+          uri: lb://elderlycare-auth
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+        # 用户服务
+        - id: user
+          uri: lb://elderlycare-user
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+        # 客户服务
+        - id: customer
+          uri: lb://elderlycare-customer
+          predicates:
+            - Path=/api/customers/**
+          filters:
+            - StripPrefix=1
+        # 文件上传
+        - id: upload
+          uri: lb://elderlycare-customer
+          predicates:
+            - Path=/api/upload/**
+          filters:
+            - StripPrefix=1
+        # 床位服务
+        - id: bed
+          uri: lb://elderlycare-bed
+          predicates:
+            - Path=/api/beds/**
+          filters:
+            - StripPrefix=1
+        # 入住服务
+        - id: checkin
+          uri: lb://elderlycare-checkin
+          predicates:
+            - Path=/api/check-ins/**,/api/check-outs/**,/api/outings/**
+          filters:
+            - StripPrefix=1
+        # 膳食服务
+        - id: meal
+          uri: lb://elderlycare-meal
+          predicates:
+            - Path=/api/meals/**
+          filters:
+            - StripPrefix=1
+        # 服务项目
+        - id: service
+          uri: lb://elderlycare-service
+          predicates:
+            - Path=/api/care-services/**,/api/service-relations/**,/api/service-purchases/**
+          filters:
+            - StripPrefix=1
+        # 护理服务
+        - id: nursing
+          uri: lb://elderlycare-nursing
+          predicates:
+            - Path=/api/nursing-levels/**,/api/nursing-items/**,/api/nursing-records/**,/api/nurse-areas/**
+          filters:
+            - StripPrefix=1
+        # 仪表盘
+        - id: dashboard
+          uri: lb://elderlycare-dashboard
+          predicates:
+            - Path=/api/dashboard/**
+          filters:
+            - StripPrefix=1
+        # AI服务
+        - id: ai
+          uri: lb://elderlycare-ai
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: info

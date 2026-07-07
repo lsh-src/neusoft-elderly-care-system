@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neusoft.elderlycare.checkin.mapper.CheckInMapper">
+
+    <select id="selectCheckInPage" resultType="com.neusoft.elderlycare.entity.CheckIn">
+        SELECT ci.id, ci.register_no, ci.customer_id, ci.bed_id,
+               ci.check_in_date, ci.contract_months, ci.deposit, ci.operator,
+               ci.create_time, ci.update_time,
+               c.name AS customer_name,
+               b.bed_no AS bed_no
+        FROM check_in ci
+        LEFT JOIN customer c ON ci.customer_id = c.id AND c.deleted = 0
+        LEFT JOIN bed b ON ci.bed_id = b.id AND b.deleted = 0
+        WHERE ci.deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (ci.register_no LIKE CONCAT('%', #{keyword}, '%')
+                 OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                 OR b.bed_no LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY ci.create_time DESC
+    </select>
+
+</mapper>

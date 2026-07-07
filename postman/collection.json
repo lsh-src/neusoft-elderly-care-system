@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "东软颐养中心管理系统 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "登录",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"13800000000\",\n  \"password\": \"123456\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('token', json.data.token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "注册普通客户",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"13999990000\",\n  \"password\": \"123456\",\n  \"name\": \"测试客户\",\n  \"age\": 66,\n  \"gender\": \"男\"\n}"
+        }
+      }
+    },
+    {
+      "name": "统计首页",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/dashboard/stats"
+      }
+    },
+    {
+      "name": "客户分页查询",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/customers/page?current=1&size=10&keyword=王"
+      }
+    },
+    {
+      "name": "新增客户",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/customers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerNo\": \"C2026999\",\n  \"name\": \"课程验收客户\",\n  \"gender\": \"女\",\n  \"age\": 70,\n  \"idCard\": \"110101195601019999\",\n  \"phone\": \"13999999999\",\n  \"emergencyContact\": \"家属 13988888888\",\n  \"healthStatus\": \"健康\",\n  \"remark\": \"Postman新增\",\n  \"checkedIn\": 0\n}"
+        }
+      }
+    },
+    {
+      "name": "办理入住",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/check-ins",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"registerNo\": \"IN2026999\",\n  \"customerId\": 3,\n  \"bedId\": 3,\n  \"checkInDate\": \"2026-06-03\",\n  \"contractMonths\": 12,\n  \"deposit\": 5000,\n  \"operator\": \"系统管理员\"\n}"
+        }
+      }
+    },
+    {
+      "name": "外出返回登记",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/outings/1/return"
+      }
+    }
+  ]
+}
