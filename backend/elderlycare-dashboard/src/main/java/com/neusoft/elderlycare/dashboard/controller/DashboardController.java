@@ -16,7 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/dashboard")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','NURSE')")
 @Tag(name = "统计仪表盘", description = "运营数据统计")
 public class DashboardController {
     private final DashboardService dashboardService;

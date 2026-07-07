@@ -81,7 +81,8 @@ const submit = async () => {
   try {
     await userStore.login({ phone: form.phone.trim(), password: form.password.trim() })
     ElMessage.success('登录成功')
-    router.push('/dashboard')
+    const defaultPath = userStore.role === 'ROLE_USER' ? '/customers' : '/dashboard'
+    router.push(defaultPath)
   } catch (err) {
     // 错误已在 request.js 拦截器中统一处理，此处不再重复提示
   } finally {

@@ -36,10 +36,12 @@ Thumbs.db
 desktop.ini
 
 # ==================== 敏感配置 ====================
-# 本地环境变量文件
 .env
 .env.local
 *.env
+# 阿里云 OSS 本地配置（生产环境通过环境变量注入）
+application-local.yml
+application-prod.yml
 
 # ==================== Claude Code ====================
 .claude/

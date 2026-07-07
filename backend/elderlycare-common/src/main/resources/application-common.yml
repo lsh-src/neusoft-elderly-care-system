@@ -71,4 +71,4 @@ aliyun:
     accessKeyId: ${ALIYUN_OSS_ACCESS_KEY_ID:your-access-key-id}
     accessKeySecret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:your-access-key-secret}
     bucketName: ${ALIYUN_OSS_BUCKET_NAME:your-bucket-name}
-    domain: ${ALIYUN_OSS_DOMAIN:https://your-bucket-name.your-endpoint}
+    domain: ${ALIYUN_OSS_DOMAIN:https://your-bucket.your-endpoint}

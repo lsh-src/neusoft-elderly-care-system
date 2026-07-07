@@ -1,108 +1,190 @@
 # 东软颐养中心管理系统
 
-> 养老机构运营管理平台 — 前后端分离、模块化架构、配置驱动前端
+> 养老机构运营管理平台 — Spring Cloud 微服务 + Vue 3 配置驱动前端
 
 ---
 
 ## 目录
 
+- [项目简介](#项目简介)
 - [技术栈](#技术栈)
-- [项目结构总览](#项目结构总览)
-- [后端架构：为什么拆成 11 个模块](#后端架构为什么拆成-11-个模块)
-- [前端架构：为什么只用一个 CrudPage](#前端架构为什么只用一个-crudpage)
-- [数据流：一次完整的请求旅程](#数据流一次完整的请求旅程)
-- [安全设计](#安全设计)
+- [项目结构](#项目结构)
+- [后端架构](#后端架构)
+- [前端架构](#前端架构)
+- [安全与权限设计](#安全与权限设计)
+- [AI 智能服务](#ai-智能服务)
 - [数据库设计](#数据库设计)
-- [如何扩展新模块](#如何扩展新模块)
 - [快速启动](#快速启动)
 - [演示账号](#演示账号)
+- [API 文档](#api-文档)
+- [如何扩展新模块](#如何扩展新模块)
+
+---
+
+## 项目简介
+
+东软颐养中心管理系统是面向养老机构的一站式运营管理平台，涵盖入住管理、床位管理、膳食管理、护理管理、服务管理、统计仪表盘、AI 智能服务等核心业务模块。
+
+**核心特性：**
+
+- 🔧 **配置驱动前端** — 13+ CRUD 模块共用一个 `CrudPage.vue`，新增模块无需写 Vue 文件
+- 🏗️ **微服务架构** — 12 个 Spring Boot 模块 + Nacos 注册中心 + Spring Cloud Gateway 统一路由
+- 🤖 **AI RAG 集成** — 知识库检索增强生成（RAG）+ MiMo 大模型，支持智能问答、健康评估、护理推荐
+- 🔐 **三层权限控制** — URL 级 SecurityConfig + 方法级 @PreAuthorize + 前端路由守卫与菜单过滤
+- 📊 **实时数据仪表盘** — ECharts 可视化，聚合各模块统计数据
 
 ---
 
 ## 技术栈
 
-| 层级 | 技术 | 版本 | 选型理由 |
-|------|------|------|----------|
-| 前端框架 | Vue 3 + Vite | 3.5 / 6.4 | 组合式 API + 极速 HMR |
-| UI 组件库 | Element Plus | 2.9 | 企业级组件丰富，中文生态好 |
-| 状态管理 | Pinia | 2.3 | Vue 3 官方推荐，轻量 |
-| 路由 | Vue Router | 4.5 | 配合 Pinia 做权限守卫 |
-| HTTP 客户端 | Axios | 1.7 | 拦截器统一处理 token 和错误 |
-| 图表 | ECharts | 5.6 | 仪表盘数据可视化 |
-| 后端框架 | Spring Boot | 3.3.5 | Java 17，主流企业级框架 |
-| ORM | MyBatis-Plus | 3.5.7 | 单表零 SQL，XML 支持联表 |
-| 安全 | Spring Security + JWT | 6.x / 0.12.6 | 无状态认证，角色权限 |
-| 数据库 | MySQL | 8.0 | 关系型数据，事务支持 |
-| 文件存储 | 阿里云 OSS | — | 图片上传 CDN 加速 |
+| 层级 | 技术 | 版本 | 说明 |
+|------|------|------|------|
+| **前端框架** | Vue 3 + Vite | 3.5 / 6.0 | 组合式 API + 极速 HMR |
+| **UI 组件库** | Element Plus | 2.9 | 企业级组件，中文生态完善 |
+| **状态管理** | Pinia | 2.3 | Vue 3 官方推荐 |
+| **路由** | Vue Router | 4.5 | 角色权限守卫 |
+| **HTTP 客户端** | Axios | 1.7 | JWT 拦截器 + 统一错误处理 |
+| **图表** | ECharts | 5.6 | 仪表盘数据可视化 |
+| **后端框架** | Spring Boot | 3.3.5 | Java 17 |
+| **微服务** | Spring Cloud + Nacos | 4.1.5 / 2023.0.1.2 | 服务注册发现 + 网关路由 |
+| **ORM** | MyBatis-Plus | 3.5.7 | 单表零 SQL，XML 联表查询 |
+| **安全** | Spring Security + JWT | 6.x / 0.12.6 | 无状态认证 |
+| **消息队列** | RabbitMQ | — | AI 事件异步消费 |
+| **数据库** | MySQL | 8.0 | InnoDB，utf8mb4 |
+| **文件存储** | 阿里云 OSS | — | 图片上传 CDN 加速 |
+| **AI 模型** | MiMo LLM | — | RAG 检索增强 + 智能问答 |
 
 ---
 
-## 项目结构总览
+## 项目结构
 
 ```
 neusoftelderlycare1/
-├── backend/                          # Spring Boot 多模块 Maven 项目
-│   ├── pom.xml                       # 父 POM（依赖版本管理 + 模块声明）
-│   ├── elderlycare-common/           # 🧱 公共基础层
-│   ├── elderlycare-auth/             # 🔐 认证鉴权模块
-│   ├── elderlycare-user/             # 👤 用户管理
-│   ├── elderlycare-customer/         # 👥 客户管理
-│   ├── elderlycare-bed/              # 🛏️ 床位管理
-│   ├── elderlycare-checkin/          # 📋 入住/退住/外出登记
-│   ├── elderlycare-meal/             # 🍽️ 膳食管理
-│   ├── elderlycare-service/          # ⭐ 服务管理
-│   ├── elderlycare-nursing/          # 💊 护理管理
-│   ├── elderlycare-dashboard/        # 📊 统计仪表盘
-│   └── elderlycare-app/              # 🚀 应用启动入口
+├── backend/                              # Spring Cloud 多模块 Maven 项目
+│   ├── pom.xml                           # 父 POM（依赖版本管理 + 12 个子模块声明）
+│   ├── elderlycare-common/               # 🧱 公共基础层：实体、BaseEntity、ApiResponse、
+│   │                                     #    BaseCrudController、SecurityConfig、JWT、
+│   │                                     #    Feign 客户端、RabbitMQ 配置、工具类
+│   ├── elderlycare-gateway/              # 🚪 Spring Cloud Gateway：统一路由入口
+│   ├── elderlycare-auth/                 # 🔐 认证鉴权：登录注册、JWT 签发
+│   ├── elderlycare-user/                 # 👤 用户管理：sys_user CRUD
+│   ├── elderlycare-customer/             # 👥 客户管理：客户 CRUD + OSS 文件上传
+│   ├── elderlycare-bed/                  # 🛏️ 床位管理：床位 CRUD、分配、释放
+│   ├── elderlycare-checkin/              # 📋 出入登记：入住/退住/外出登记
+│   ├── elderlycare-meal/                 # 🍽️ 膳食管理：膳食计划、日历视图
+│   ├── elderlycare-service/              # ⭐ 服务管理：服务项目、购买、服务关系
+│   ├── elderlycare-nursing/              # 💊 护理管理：护理级别、内容、记录、区域
+│   ├── elderlycare-dashboard/            # 📊 统计仪表盘：Feign 聚合各模块数据
+│   └── elderlycare-ai/                   # 🤖 AI 智能服务：RAG 引擎 + LLM 集成
 │
-├── frontend/                         # Vue 3 SPA
+├── frontend/                             # Vue 3 单页应用
 │   ├── src/
 │   │   ├── views/
-│   │   │   ├── CrudPage.vue          # ⭐ 核心：通用 CRUD 页面组件
-│   │   │   ├── moduleConfig.js       # ⭐ 核心：模块字段配置
-│   │   │   ├── Layout.vue            # 侧边栏 + 顶栏布局壳
-│   │   │   ├── Dashboard.vue         # ECharts 仪表盘
-│   │   │   ├── MealCalendar.vue      # 膳食日历
-│   │   │   ├── Profile.vue           # 个人信息
-│   │   │   ├── Login.vue / Register.vue
-│   │   ├── router/index.js           # 路由 + 菜单配置 + 权限守卫
-│   │   ├── api/crud.js               # 通用 CRUD API 封装
-│   │   ├── stores/user.js            # Pinia 用户状态
-│   │   ├── utils/request.js          # Axios 实例 + 拦截器
-│   │   └── styles/theme.css          # 全局主题变量
-│   ├── vite.config.js
+│   │   │   ├── CrudPage.vue              # ⭐ 通用 CRUD 页面组件（所有业务模块共用）
+│   │   │   ├── moduleConfig.js           # ⭐ 模块字段配置表
+│   │   │   ├── Layout.vue                # 侧边栏 + 顶栏布局
+│   │   │   ├── Dashboard.vue             # ECharts 运营仪表盘
+│   │   │   ├── MealCalendar.vue          # 膳食日历视图
+│   │   │   ├── Profile.vue               # 个人信息
+│   │   │   ├── Login.vue / Register.vue  # 登录注册
+│   │   │   └── ai/                       # AI 页面
+│   │   │       ├── AiChat.vue            # AI 对话
+│   │   │       ├── RagQuery.vue          # RAG 检索问答
+│   │   │       ├── KnowledgeBase.vue     # 知识库管理
+│   │   │       ├── HealthAnalysis.vue    # 健康评估
+│   │   │       └── CareRecommendation.vue # 护理方案推荐
+│   │   ├── router/index.js               # 路由 + 菜单配置 + 权限守卫
+│   │   ├── api/crud.js                   # 通用 CRUD API 工厂
+│   │   ├── stores/user.js                # Pinia 用户状态管理
+│   │   ├── utils/request.js              # Axios 实例 + JWT 拦截器
+│   │   └── styles/theme.css              # 全局主题变量
+│   ├── vite.config.js                    # Vite 配置 + API 代理
 │   └── package.json
 │
-├── database/                         # 建表 SQL
-├── docs/                             # ER 图
-└── postman/                          # API 测试集合
+├── database/
+│   └── neusoft_elderly_care.sql          # 建表 SQL + 初始数据
+├── postman/
+│   └── collection.json                   # API 测试集合
+└── README.md
 ```
 
 ---
 
-## 后端架构：为什么拆成 11 个模块
+## 后端架构
 
-### 设计思想
+### 微服务拓扑
 
-传统单体 Spring Boot 项目把所有 Controller、Service、Mapper 放在一个模块里。随着业务增长，会出现：
+```
+                         ┌─────────────────┐
+                         │   前端 (Vite)    │
+                         │  localhost:5173  │
+                         └────────┬────────┘
+                                  │ /api/**
+                                  ▼
+                         ┌─────────────────┐
+                         │  Gateway :8080   │  ← Spring Cloud Gateway
+                         │  统一路由入口     │     StripPrefix=1
+                         └────────┬────────┘
+                                  │
+              ┌───────────────────┼───────────────────┐
+              │                   │                   │
+              ▼                   ▼                   ▼
+     ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+     │ Auth :8081   │   │ User         │   │ Customer     │
+     │ 登录注册     │   │ 用户管理     │   │ 客户管理     │
+     └──────────────┘   └──────────────┘   └──────────────┘
+              │                   │                   │
+              ▼                   ▼                   ▼
+     ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+     │ Bed          │   │ CheckIn      │   │ Meal         │
+     │ 床位管理     │   │ 出入登记     │   │ 膳食管理     │
+     └──────────────┘   └──────────────┘   └──────────────┘
+              │                   │                   │
+              ▼                   ▼                   ▼
+     ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+     │ Service      │   │ Nursing      │   │ Dashboard    │
+     │ 服务管理     │   │ 护理管理     │   │ 统计聚合     │
+     └──────────────┘   └──────────────┘   └──────────────┘
+              │
+              ▼
+     ┌──────────────┐        ┌─────────────┐
+     │ AI :8090     │◄──────►│  Nacos      │  ← 服务注册发现
+     │ 智能服务     │        │  注册中心   │
+     └──────────────┘        └─────────────┘
+              │
+              ▼
+     ┌──────────────┐
+     │  RabbitMQ    │  ← 业务事件异步消费
+     └──────────────┘
+```
 
-- **编译慢**：改一行代码，整个项目重新编译
-- **职责不清**：护理模块的开发者可能误改膳食模块的代码
-- **依赖混乱**：不知道哪些类被哪些模块依赖
+### Gateway 路由映射
 
-本项目采用 **Maven 多模块** 架构，每个业务域一个独立模块，解决上述问题。
+| 前端路径 | 后端服务 | 说明 |
+|----------|----------|------|
+| `/api/auth/**` | elderlycare-auth | 登录、注册 |
+| `/api/users/**` | elderlycare-user | 用户管理 |
+| `/api/customers/**` | elderlycare-customer | 客户管理 |
+| `/api/beds/**` | elderlycare-bed | 床位管理 |
+| `/api/check-ins/**` | elderlycare-checkin | 入住/退住/外出登记 |
+| `/api/meals/**` | elderlycare-meal | 膳食管理 |
+| `/api/nursing-*/**` | elderlycare-nursing | 护理级别/内容/记录/区域 |
+| `/api/care-services/**` | elderlycare-service | 服务管理 |
+| `/api/dashboard/**` | elderlycare-dashboard | 统计仪表盘 |
+| `/api/ai/**` | elderlycare-ai | AI 智能服务 |
+| `/api/upload/**` | elderlycare-customer | 文件上传 |
 
 ### 模块依赖关系
 
 ```
                         ┌─────────────┐
                         │   common    │  ← 实体、BaseEntity、ApiResponse、
-                        │  (基础层)    │    PageQuery、BaseCrudController、
-                        └──────┬──────┘    OssUtil、NumberGenerator
+                        │  (基础层)    │    BaseCrudController、SecurityConfig、
+                        └──────┬──────┘    JWT、Feign 客户端、RabbitMQ 配置
                                │
                         ┌──────▼──────┐
-                        │    auth     │  ← JWT 过滤器、Token 生成、
-                        │  (认证层)    │    UserDetails、SysUser
+                        │    auth     │  ← JWT 签发、登录注册、UserDetails
+                        │  (认证层)    │
                         └──────┬──────┘
                                │
           ┌────────────────────┼────────────────────┐
@@ -114,7 +196,7 @@ neusoftelderlycare1/
                               │                    │
                        ┌──────▼────────────────────▼──────┐
                        │           checkin                │
-                       │  入住登记 / 退住登记 / 外出登记    │
+                       │  入住 / 退住 / 外出登记           │
                        │  (依赖 customer + bed 更新状态)   │
                        └──────────────────────────────────┘
 
@@ -126,127 +208,37 @@ neusoftelderlycare1/
           └──────────────┼──────────────┘
                          │
                   ┌──────▼──────┐
-                  │  dashboard  │  ← 聚合所有模块的统计数据
+                  │  dashboard  │  ← Feign 聚合各模块统计数据
                   │  统计仪表盘  │
-                  └──────┬──────┘
-                         │
-                  ┌──────▼──────┐
-                  │     app     │  ← Spring Boot 启动入口
-                  │  (应用入口)  │    SecurityConfig、DataInitializer
-                  └─────────────┘    依赖所有模块
+                  └─────────────┘
+
+                  ┌─────────────┐
+                  │     ai      │  ← RAG 引擎 + MiMo LLM
+                  │  AI 智能服务 │    RabbitMQ 事件消费
+                  └─────────────┘
 ```
 
-### 每个模块内部结构（以 checkin 为例）
+### 每个模块内部结构
 
 ```
-elderlycare-checkin/
+elderlycare-{module}/
 └── src/main/java/com/neusoft/elderlycare/
-    ├── controller/
-    │   ├── CheckInController.java     # 入住登记 REST 接口
-    │   ├── CheckOutController.java    # 退住登记 REST 接口
-    │   └── OutingController.java      # 外出登记 REST 接口
-    ├── service/
-    │   ├── CheckInService.java        # 接口
-    │   ├── CheckInServiceImpl.java    # 实现（含业务逻辑）
-    │   ├── CheckOutService.java
-    │   ├── CheckOutServiceImpl.java
-    │   ├── OutingService.java
-    │   └── OutingServiceImpl.java
-    └── mapper/
-        ├── CheckInMapper.java         # MyBatis 接口
-        ├── CheckOutMapper.java
-        └── OutingMapper.java
+    ├── controller/           # REST 接口（继承 BaseCrudController）
+    ├── service/              # 业务逻辑接口
+    │   └── impl/             # 业务逻辑实现
+    ├── mapper/               # MyBatis Mapper 接口
+    └── resources/mapper/     # Mapper XML（联表查询 SQL）
 ```
 
-> **注意**：实体类（Entity）统一放在 `elderlycare-common` 模块，因为多个模块需要共享同一实体。Mapper XML 文件放在各自模块的 `src/main/resources/mapper/` 目录下。
-
-### 为什么 checkin 依赖 customer 和 bed
-
-入住登记（CheckIn）的业务逻辑不仅是"插入一条入住记录"，还需要：
-
-1. 更新 `customer.checked_in = 1`（标记客户已入住）
-2. 更新 `bed.status = '已入住'` 并关联 `bed.customer_id`
-3. 退住时反向操作：释放床位、标记客户未入住
-
-所以 `checkin` 模块必须依赖 `customer` 和 `bed` 模块的 Service。
-
-### 为什么 dashboard 依赖几乎所有模块
-
-仪表盘需要聚合统计：
-
-- 总客户数、在住人数 → `customer` 模块
-- 空闲床位数 → `bed` 模块
-- 入住趋势（近 7 天） → `checkin` 模块
-- 护理记录统计 → `nursing` 模块
-- 服务订单数 → `service` 模块
-
-这是唯一一个"读多写少、跨域聚合"的模块。
-
-### BaseCrudController 的复用设计
-
-`common` 模块提供了 `BaseCrudController<T>` 抽象类，封装了标准 CRUD 接口：
-
-```java
-public abstract class BaseCrudController<T extends BaseEntity, S extends IService<T>> {
-    @GetMapping("/page")    // 分页查询
-    @GetMapping("/{id}")    // 按 ID 查询
-    @PostMapping            // 新增
-    @PutMapping("/{id}")    // 修改
-    @DeleteMapping("/{id}") // 删除
-}
-```
-
-业务 Controller 只需继承它，`@Override` 需要定制的方法（如 `page()` 做联表查询、`create()` 做业务校验），其余接口自动复用。**这就是为什么大部分 Controller 代码很短。**
+> **注意**：实体类（Entity）统一放在 `elderlycare-common`，因为多个模块需要共享。`BaseCrudController` 提供标准 CRUD 接口（page / detail / create / update / delete），业务 Controller 只需 Override 需要定制的方法。
 
 ---
 
-## 前端架构：为什么只用一个 CrudPage
+## 前端架构
 
-### 问题：13 个模块，13 个页面？
+### 配置驱动的通用 CRUD 组件
 
-系统有 13 个 CRUD 模块（客户、床位、入住、退住、外出、膳食、服务对象、服务关注、服务购买、护理级别、护理内容、护理记录、负责区域）。如果每个模块写一个独立的 `.vue` 文件，会有大量重复代码：
-
-- 表格渲染（el-table + 分页 + 搜索）
-- 新增/编辑弹窗（el-dialog + el-form + 表单校验）
-- 详情抽屉（el-drawer + el-descriptions）
-- 删除确认（ElMessageBox.confirm）
-
-### 解决方案：配置驱动的通用 CRUD 组件
-
-前端只用 **一个 `CrudPage.vue`** + **一个 `moduleConfig.js`**，通过配置区分所有模块。
-
-#### moduleConfig.js — 字段配置表
-
-```javascript
-// 每个模块的表单字段定义：[字段名, 标签, 类型, 是否必填, 选项, 默认值]
-export const fieldMap = {
-  customers: [
-    ['name', '姓名', 'text', true],
-    ['gender', '性别', 'select', true, ['男', '女'], '男'],
-    ['age', '年龄', 'number', true],
-    ['phone', '联系电话', 'text'],
-    ['checkInDate', '入住日期', 'date'],
-    // ...
-  ],
-  beds: [
-    ['roomNo', '房间编号', 'text', true],
-    ['bedNo', '床位编号', 'text', true],
-    ['status', '状态', 'select', true, ['空闲', '已入住', '维修中'], '空闲'],
-  ],
-  // ... 其他模块
-}
-
-// 下拉框数据源配置
-export const dropdownSources = {
-  'check-ins': [
-    { prop: 'customerId', resource: 'customers', label: 'name', value: 'id' },
-    { prop: 'bedId', resource: 'beds', label: 'bedNo', value: 'id' },
-  ],
-  // ...
-}
-```
-
-#### CrudPage.vue — 渲染引擎
+系统有 13+ 个 CRUD 模块，全部共用一个 `CrudPage.vue`，通过 `moduleConfig.js` 的字段配置区分：
 
 ```
 moduleConfig.js                    CrudPage.vue
@@ -266,117 +258,33 @@ moduleConfig.js                    CrudPage.vue
                                  └──────────────────────────┘
 ```
 
-#### 路由如何驱动
+### 路由与菜单
+
+路由和菜单统一由 `router/index.js` 的 `menuGroups` 配置驱动：
 
 ```javascript
-// router/index.js
-const routes = menuGroups.flatMap(group => group.children).map(item => ({
-  path: item.path,
-  component: CrudPage,           // 所有 CRUD 模块共用同一个组件
-  props: { module: item },       // 通过 props 传入模块配置
-}))
-
-// 侧边栏菜单也从 menuGroups 生成，支持按角色过滤
-menuGroups.forEach(group => {
-  group.children.forEach(item => {
-    if (item.roles.includes(userStore.role)) { /* 显示菜单 */ }
-  })
-})
-```
-
-#### 新增一个模块只需 3 步
-
-**第 1 步**：后端 — 继承 `BaseCrudController`
-
-```java
-@RestController
-@RequestMapping("/nurse-areas")
-public class NurseAreaController extends BaseCrudController<NurseArea, NurseAreaService> {
-    // 自动获得 /page, /{id}, POST, PUT, DELETE 接口
-}
-```
-
-**第 2 步**：前端 `moduleConfig.js` — 加字段配置
-
-```javascript
-'nurse-areas': [
-  ['areaName', '区域名称', 'text', true],
-  ['remark', '备注', 'textarea'],
+export const menuGroups = [
+  {
+    groupName: '入住管理',
+    icon: 'House',
+    children: [
+      { path: 'customers', title: '客户管理', resource: 'customers', icon: 'Avatar',
+        roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_NURSE', 'ROLE_USER'] },
+      { path: 'beds', title: '床位管理', resource: 'beds', icon: 'House',
+        roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+    ]
+  },
+  // ... 更多分组
 ]
 ```
 
-**第 3 步**：前端 `router/index.js` — 加菜单项
-
-```javascript
-{ path: 'nurse-areas', title: '负责区域', resource: 'nurse-areas', icon: 'Location', roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
-```
-
-**不需要写任何新的 `.vue` 文件。**
+- `roles` 控制菜单可见性
+- `resource` 映射到 `moduleConfig.js` 的字段配置
+- 路由守卫根据角色自动拦截无权限访问
 
 ---
 
-## 数据流：一次完整的请求旅程
-
-以"查看入住登记列表"为例：
-
-```
-用户点击侧边栏「入住登记」
-        │
-        ▼
-┌─── 前端 ────────────────────────────────────────────────────────────┐
-│                                                                     │
-│  1. Vue Router 匹配 /check-ins 路由                                 │
-│  2. 加载 CrudPage.vue，传入 props.module = {                        │
-│       path: 'check-ins', resource: 'check-ins', title: '入住登记'   │
-│     }                                                               │
-│  3. onMounted → load() → pageApi('check-ins', { current:1, size:10 })│
-│  4. Axios GET /api/check-ins/page?current=1&size=10                 │
-│  5. 请求头自动附带 Authorization: Bearer <JWT>                      │
-│                                                                     │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                          Vite 代理 (localhost:5173 → localhost:8080)
-                                 │
-                                 ▼
-┌─── 后端 ────────────────────────────────────────────────────────────┐
-│                                                                     │
-│  6. JwtAuthenticationFilter 解析 token → 设置 SecurityContext       │
-│  7. CheckInController.page() 被调用                                 │
-│     ├── @PreAuthorize("hasAnyRole('ADMIN','MANAGER')") 权限校验     │
-│     └── 调用 CheckInService.getCheckInPage(page, keyword)           │
-│  8. CheckInServiceImpl 调用 CheckInMapper.selectCheckInPage()       │
-│  9. MyBatis 执行 CheckInMapper.xml 中的 SQL：                       │
-│     SELECT ci.*, c.name AS customer_name, b.bed_no AS bed_no        │
-│     FROM check_in ci                                                │
-│     LEFT JOIN customer c ON ci.customer_id = c.id                   │
-│     LEFT JOIN bed b ON ci.bed_id = b.id                             │
-│     WHERE ci.deleted = 0                                            │
-│     ORDER BY ci.create_time DESC                                    │
-│  10. 返回 ApiResponse<Page<CheckIn>>                                │
-│      { code: 200, data: { records: [...], total: 42 } }             │
-│                                                                     │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─── 前端 ────────────────────────────────────────────────────────────┐
-│                                                                     │
-│  11. Axios 拦截器检查 code === 200 → 返回 result.data               │
-│  12. CrudPage 更新 rows.value = res.records, total = res.total      │
-│  13. el-table 渲染：                                                │
-│      - 序号列（自动计算）                                            │
-│      - 额外列：registerNo（来自 getExtraColumns 配置）              │
-│      - 字段列：customerId → 显示 customerName（联查字段）           │
-│               bedId → 显示 bedNo（联查字段）                        │
-│               checkInDate、contractMonths、deposit 等               │
-│      - 操作列：详情 / 编辑 / 删除                                   │
-│  14. el-pagination 显示分页控件                                     │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 安全设计
+## 安全与权限设计
 
 ### 认证流程
 
@@ -402,33 +310,72 @@ JwtAuthenticationFilter.doFilterInternal()
   └── 设置 SecurityContext.authentication
 ```
 
-### 权限模型
+### 角色权限矩阵
 
-| 角色 | 可访问模块 |
-|------|-----------|
-| `ROLE_ADMIN` | 全部模块 + 用户管理 |
-| `ROLE_MANAGER` | 客户、床位、入住/退住/外出、膳食、服务、护理、仪表盘 |
-| `ROLE_USER` | 客户（只读）、外出、膳食、服务、护理（只读）、仪表盘 |
+| 模块 | ADMIN 管理员 | MANAGER 健康管家 | NURSE 护士 | USER 入住老人 |
+|------|:---:|:---:|:---:|:---:|
+| 运营仪表盘 | ✅ | ✅ | ✅ | ❌ 不显示 |
+| 客户管理 | ✅ 全部 | ✅ 全部 | ✅ 全部 | ✅ 只读 |
+| 床位管理 | ✅ | ✅ | ✅ 只读 | ❌ |
+| 入住登记 | ✅ | ✅ | ✅ 只读 | ❌ |
+| 退住登记 | ✅ | ✅ | ❌ | ❌ |
+| 外出登记 | ✅ | ✅ | ✅ | ✅ |
+| 膳食管理 | ✅ | ✅ | ✅ | ✅ |
+| 服务对象 | ✅ | ✅ | ❌ | ❌ |
+| 服务关注 | ✅ | ✅ | ❌ | ✅ |
+| 服务购买 | ✅ | ✅ | ✅ 只读 | ✅ |
+| 护理级别 | ✅ | ✅ | ✅ 只读 | ✅ 只读 |
+| 护理内容 | ✅ | ✅ | ✅ 只读 | ✅ 只读 |
+| 护理记录 | ✅ | ✅ | ✅ | ✅ 只读 |
+| 负责区域 | ✅ | ✅ | ❌ | ❌ |
+| 用户管理 | ✅ | ❌ | ❌ | ❌ |
+| AI 对话 | ✅ | ✅ | ✅ | ✅ |
+| RAG 检索 | ✅ | ✅ | ❌ | ✅ |
+| 知识库管理 | ✅ | ✅ | ❌ | ❌ |
+| 健康评估 | ✅ | ✅ | ❌ | ❌ |
+| 护理推荐 | ✅ | ✅ | ❌ | ❌ |
 
-权限通过两层控制：
+### 三层权限控制
 
-1. **URL 级别**：`SecurityConfig` 中 `.requestMatchers("/users/**").hasRole("ADMIN")`
-2. **方法级别**：Controller 上 `@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")`
+1. **URL 级别** — `SecurityConfig` 中 `.requestMatchers("/users/**").hasRole("ADMIN")`
+2. **方法级别** — Controller 类/方法上 `@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")`
+3. **前端级别** — 路由守卫拦截 + 菜单按角色过滤显示
 
-### 前端权限
+### Feign 调用链路中的权限传递
 
-```javascript
-// router/index.js — 路由守卫
-router.beforeEach((to) => {
-  if (!userStore.token) return '/login'                    // 未登录 → 登录页
-  if (to.meta.roles && !to.meta.roles.includes(userStore.role))
-    return '/dashboard'                                    // 无权限 → 首页
-})
+仪表盘通过 Feign 调用下游服务获取统计数据。`FeignAuthInterceptor` 自动将当前请求的 JWT token 转发给下游服务，确保跨服务调用的权限一致性。
 
-// Layout.vue — 菜单过滤
-const filterGroupItems = (items) =>
-  items.filter(item => item.roles.includes(userStore.role))
+---
+
+## AI 智能服务
+
+### RAG 检索增强生成
+
 ```
+用户提问 → 知识库检索 → Top-K 相关文档 → 注入系统提示词 → LLM 生成回答
+```
+
+**流程：**
+
+1. `KnowledgeBaseService` 将文档分块（500 字符，50 字符重叠）
+2. 调用 Embedding API 生成向量，存入 `SimpleVectorStore`（基于 ConcurrentHashMap）
+3. 用户查询时，`RagService` 将问题向量化 → 余弦相似度检索 Top-K 文档
+4. 将检索结果注入系统提示词，调用 MiMo LLM 生成回答
+5. 知识库为空时降级为直接 LLM 问答
+
+### AI 功能模块
+
+| 功能 | 说明 |
+|------|------|
+| AI 对话 | 基于 MiMo 大模型的智能对话 |
+| RAG 检索问答 | 基于知识库的精准问答 |
+| 知识库管理 | 文档上传、分块、向量化 |
+| 健康评估 | 基于客户数据的 AI 健康分析 |
+| 护理方案推荐 | 基于客户状况的个性化护理建议 |
+
+### 事件驱动
+
+AI 模块通过 RabbitMQ 消费业务事件（如新客户入住、护理记录更新），实现异步处理和智能分析。
 
 ---
 
@@ -443,49 +390,30 @@ const filterGroupItems = (items) =>
 | `id` | BIGINT AUTO_INCREMENT | 主键 |
 | `create_time` | DATETIME | 创建时间（自动填充） |
 | `update_time` | DATETIME | 更新时间（自动填充） |
-| `deleted` | INT DEFAULT 0 | 逻辑删除（0=正常, 1=已删除） |
+| `deleted` | TINYINT DEFAULT 0 | 逻辑删除（0=正常, 1=已删除） |
 
-MyBatis-Plus 配置：
-```yaml
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true    # 下划线 → 驼峰自动映射
-  global-config:
-    db-config:
-      id-type: auto                        # 自增主键
-      logic-delete-field: deleted          # 全局逻辑删除字段
-```
+### 数据表
 
-### 实体与表对应
+| 表名 | 实体 | 说明 |
+|------|------|------|
+| `sys_user` | SysUser | 系统用户（管理员、健康管家、护士、入住老人） |
+| `customer` | Customer | 入住客户（老人） |
+| `bed` | Bed | 床位（房间号 + 床位号 + 状态） |
+| `check_in` | CheckIn | 入住登记（关联客户 + 床位） |
+| `check_out` | CheckOut | 退住登记 |
+| `outing` | Outing | 外出登记 |
+| `meal` | Meal | 膳食记录（早/午/晚 + 图片） |
+| `care_service` | CareService | 服务项目（价格、内容、周期） |
+| `service_relation` | ServiceRelation | 服务关系（客户 ↔ 健康管家） |
+| `service_purchase` | ServicePurchase | 服务购买记录 |
+| `nursing_level` | NursingLevel | 护理级别（名称、费用） |
+| `nursing_item` | NursingItem | 护理项目（名称、频率、所属级别） |
+| `nursing_record` | NursingRecord | 护理记录（执行人、时间、内容、结果） |
+| `nurse_area` | NurseArea | 负责区域 |
 
-| 实体 | 表名 | 业务说明 |
-|------|------|----------|
-| SysUser | sys_user | 系统用户（管理员、健康管家、护士、老人） |
-| Customer | customer | 入住客户（老人） |
-| Bed | bed | 床位（房间号 + 床位号 + 状态） |
-| CheckIn | check_in | 入住登记（关联客户 + 床位） |
-| CheckOut | check_out | 退住登记 |
-| Outing | outing | 外出登记 |
-| Meal | meal | 膳食记录（早/午/晚 + 图片） |
-| CareService | care_service | 服务项目（价格、内容、周期） |
-| ServiceRelation | service_relation | 服务关系（客户 ↔ 健康管家） |
-| ServicePurchase | service_purchase | 服务购买记录 |
-| NursingLevel | nursing_level | 护理级别（名称、费用） |
-| NursingItem | nursing_item | 护理项目（名称、频率、所属级别） |
-| NursingRecord | nursing_record | 护理记录（谁、什么时候、做了什么） |
-| NurseArea | nurse_area | 负责区域 |
+### 联表查询
 
-### 联表查询设计
-
-部分实体有 `@TableField(exist = false)` 的非数据库字段，用于联表查询展示：
-
-```java
-// Bed.java
-@TableField(exist = false)
-private String customerName;  // 来自 customer 表的 name 字段
-```
-
-对应的 Mapper XML 通过 LEFT JOIN 赋值：
+部分实体通过 `@TableField(exist = false)` 声明非数据库字段，Mapper XML 使用 LEFT JOIN 赋值：
 
 ```xml
 <select id="selectBedPage" resultType="Bed">
@@ -502,34 +430,52 @@ private String customerName;  // 来自 customer 表的 name 字段
 
 ### 环境要求
 
-- Java 17+
-- Maven 3.8+
-- Node.js 18+
-- MySQL 8.0
+| 依赖 | 版本 |
+|------|------|
+| Java | 17+ |
+| Maven | 3.8+ |
+| Node.js | 18+ |
+| MySQL | 8.0 |
+| Nacos | 2.x |
+| RabbitMQ | 3.x |
 
-### 1. 初始化数据库
+### 1. 启动基础设施
 
 ```bash
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE neusoft_elderly_care CHARACTER SET utf8mb4;"
+# 启动 Nacos 注册中心
+# 默认地址: http://127.0.0.1:8848
+# 用户名/密码: nacos/nacos
 
-# 导入建表 SQL
+# 启动 RabbitMQ
+# 默认地址: http://localhost:15672
+# 用户名/密码: guest/guest
+```
+
+### 2. 初始化数据库
+
+```bash
+mysql -u root -p -e "CREATE DATABASE neusoft_elderly_care CHARACTER SET utf8mb4;"
 mysql -u root -p neusoft_elderly_care < database/neusoft_elderly_care.sql
 ```
 
-### 2. 启动后端
+数据库连接配置在 `backend/elderlycare-common/src/main/resources/application-common.yml`。
+
+### 3. 启动后端
 
 ```bash
 cd backend
+
+# 构建所有模块
 mvn clean package -DskipTests
-java -jar elderlycare-app/target/elderlycare-app-1.0.0.jar
+
+# 依次启动各服务（或在 IDEA 中运行各 Application 类）
+java -jar elderlycare-gateway/target/elderlycare-gateway-1.0.0.jar       # :8080
+java -jar elderlycare-auth/target/elderlycare-auth-1.0.0.jar             # :8081
+java -jar elderlycare-ai/target/elderlycare-ai-1.0.0.jar                 # :8090
+# 其余模块通过 Nacos 注册，按需启动
 ```
 
-或在 IDEA 中直接运行 `ElderlyCareApplication.main()`。
-
-后端地址：`http://localhost:8080/api`
-
-### 3. 启动前端
+### 4. 启动前端
 
 ```bash
 cd frontend
@@ -537,19 +483,82 @@ npm install
 npm run dev
 ```
 
-前端地址：`http://localhost:5173`
+前端访问：`http://localhost:5173`
 
 ---
 
 ## 演示账号
 
-| 角色 | 手机号 | 密码 | 权限范围 |
-|------|--------|------|----------|
-| 管理员 | 13800000000 | 123456 | 全部功能 + 用户管理 |
-| 健康管家 | 13800000001 | 123456 | 业务管理（无用户管理） |
-| 入住老人 | 13800000002 | 123456 | 查看个人信息、膳食、服务 |
+系统启动时自动创建以下演示账号，密码均为 `123456`：
 
-> 后端启动时 `DataInitializer` 自动检查并创建以上账号，无需手动初始化。
+| 角色 | 手机号 | 权限范围 |
+|------|--------|----------|
+| 管理员 | 13800000000 | 全部功能 + 用户管理 |
+| 健康管家 | 13800000001 | 业务管理（无用户管理） |
+| 护士 | 13900000100 | 护理相关 + 部分只读 |
+| 入住老人 | 13800000002 | 查看个人信息、膳食、外出、服务 |
+
+---
+
+## API 文档
+
+后端集成了 Knife4j（OpenAPI 3），启动后端后访问：
+
+```
+http://localhost:8080/doc.html
+```
+
+也可使用 `postman/collection.json` 导入 Postman 进行接口测试。
+
+---
+
+## 如何扩展新模块
+
+以新增「健康档案」模块为例：
+
+### 第 1 步：后端 — 创建模块
+
+```bash
+# 1. 创建 Maven 子模块 elderlycare-health
+# 2. 继承 BaseCrudController，自动获得标准 CRUD 接口
+@RestController
+@RequestMapping("/health-records")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','NURSE')")
+public class HealthRecordController extends BaseCrudController<HealthRecord> {
+    // 自动获得 /page, /{id}, POST, PUT, DELETE
+}
+```
+
+### 第 2 步：前端 — 加字段配置
+
+```javascript
+// moduleConfig.js
+export const fieldMap = {
+  'health-records': [
+    ['customerId', '客户', 'select', true],
+    ['bloodPressure', '血压', 'text'],
+    ['heartRate', '心率', 'number'],
+    ['recordDate', '记录日期', 'date', true],
+    ['remark', '备注', 'textarea'],
+  ],
+}
+```
+
+### 第 3 步：前端 — 加菜单项
+
+```javascript
+// router/index.js → menuGroups
+{
+  groupName: '健康管理',
+  icon: 'FirstAidKit',
+  children: [
+    { path: 'health-records', title: '健康档案', resource: 'health-records',
+      icon: 'Document', roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_NURSE'] },
+  ]
+}
+```
+
+**不需要写任何新的 `.vue` 文件。** `CrudPage.vue` 会根据配置自动渲染表格、表单、详情。
 
 ---
 
@@ -557,11 +566,13 @@ npm run dev
 
 | 特性 | 实现方式 |
 |------|----------|
-| **零重复页面** | 13 个 CRUD 模块共用一个 `CrudPage.vue`，配置驱动 |
+| **零重复页面** | 13+ CRUD 模块共用一个 `CrudPage.vue`，配置驱动 |
 | **零 SQL 开发** | 单表操作全靠 MyBatis-Plus BaseMapper，联表才写 XML |
-| **自动编号** | `NumberGenerator` 工具类按前缀自动生成（如 RZ20260608-001） |
+| **微服务架构** | Spring Cloud Gateway + Nacos + Feign，模块独立部署 |
+| **AI RAG 集成** | 知识库向量检索 + MiMo LLM，支持智能问答和护理推荐 |
+| **自动编号** | `NumberGenerator` 按前缀自动生成（如 RZ20260608-001） |
 | **逻辑删除** | `@TableLogic` 注解全局生效，删除只是标记 `deleted=1` |
 | **自动填充** | `createTime` / `updateTime` 由 MyBatis-Plus MetaObjectHandler 自动写入 |
-| **角色权限** | 后端 `@PreAuthorize` + 前端路由守卫 + 菜单过滤，三层控制 |
-| **文件上传** | 阿里云 OSS 直传，`UploadController` 返回 CDN URL |
-| **过渡动画** | 交叉淡入（无 `mode="out-in"`），避免复杂组件销毁时白屏 |
+| **三层权限** | URL 级 SecurityConfig + 方法级 @PreAuthorize + 前端路由守卫与菜单过滤 |
+| **文件上传** | 阿里云 OSS 直传，返回 CDN URL |
+| **优雅降级** | AI 服务不可用时前端自动降级为演示数据 |

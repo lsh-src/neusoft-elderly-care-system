@@ -23,7 +23,7 @@ export const menuGroups = [
   {
     groupName: '',
     children: [
-      { path: 'dashboard', title: '运营仪表盘', icon: 'DataAnalysis', roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_NURSE', 'ROLE_USER'], type: 'dashboard' },
+      { path: 'dashboard', title: '运营仪表盘', icon: 'DataAnalysis', roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_NURSE'], type: 'dashboard' },
     ]
   },
   // 分组1：入住管理
@@ -107,7 +107,10 @@ const routes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/dashboard',
+    redirect: (to) => {
+      const userStore = useUserStore()
+      return userStore.role === 'ROLE_USER' ? '/customers' : '/dashboard'
+    },
     children: [
       { path: 'profile', component: Profile, meta: { title: '个人信息' } },
       ...allModules.map((item) => ({
@@ -126,7 +129,7 @@ router.beforeEach((to) => {
   const userStore = useUserStore()
   if (!['/login', '/register'].includes(to.path) && !userStore.token) return '/login'
   const roles = to.meta.roles
-  if (roles?.length && !roles.includes(userStore.role)) return '/dashboard'
+  if (roles?.length && !roles.includes(userStore.role)) return userStore.role === 'ROLE_USER' ? '/customers' : '/dashboard'
 })
 
 export default router

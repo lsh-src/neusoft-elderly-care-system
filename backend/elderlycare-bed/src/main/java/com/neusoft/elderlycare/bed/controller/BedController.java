@@ -22,7 +22,7 @@
     @RestController
     @RequestMapping("/beds")
     @RequiredArgsConstructor
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','NURSE')")
     @Tag(name = "床位管理", description = "床位 CRUD、分配、释放")
     public class BedController extends BaseCrudController<Bed> {
         private final BedService bedService;

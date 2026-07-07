@@ -22,7 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/check-ins")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','NURSE')")
 @Tag(name = "入住登记", description = "客户入住登记")
 public class CheckInController extends BaseCrudController<CheckIn> {
     private final CheckInService checkInService;

@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/service-purchases")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','NURSE','USER')")
 @Tag(name = "服务购买", description = "客户购买服务记录")
 public class ServicePurchaseController extends BaseCrudController<ServicePurchase> {
     private final ServicePurchaseService purchaseService;
