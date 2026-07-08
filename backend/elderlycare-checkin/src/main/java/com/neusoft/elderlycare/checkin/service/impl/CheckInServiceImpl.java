@@ -18,6 +18,7 @@ import com.neusoft.elderlycare.checkin.service.CheckInService;
 import com.neusoft.elderlycare.mq.AiAnalysisEvent;
 import com.neusoft.elderlycare.mq.BusinessEvent;
 import com.neusoft.elderlycare.mq.MqConstants;
+import com.neusoft.elderlycare.service.StateSyncService;
 import com.neusoft.elderlycare.util.NumberGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +34,11 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
     private final CustomerFeignClient customerFeignClient;
     private final CheckInMapper checkInMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final StateSyncService stateSyncService;
 
     @Override
     public boolean register(CheckIn entity) {
-        // 1. 先通过 Feign 调用校验（事务外，不持锁）
+        // 1. Feign 校验（事务外）
         if (entity.getCustomerId() != null) {
             Customer c = customerFeignClient.getById(entity.getCustomerId()).getData();
             if (c == null) throw new BusinessException("客户不存在");
@@ -47,10 +49,9 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
                 throw new BusinessException("该客户已入住，不能重复入住");
             }
 
-            // 修复残留状态
+            // 修复残留状态（带重试）
             if (c.getCheckedIn() != null && c.getCheckedIn() == 1) {
-                c.setCheckedIn(0);
-                customerFeignClient.updateById(c.getId(), c);
+                stateSyncService.fixCustomerResidualState(c.getId());
             }
         }
 
@@ -64,20 +65,19 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
                 throw new BusinessException("该床位已被占用，无法分配");
             }
 
+            // 修复床位残留状态（带重试）
             if (!"空闲".equals(bed.getStatus())) {
-                bed.setCustomerId(null);
-                bed.setStatus("空闲");
-                bedFeignClient.updateById(bed.getId(), bed);
+                stateSyncService.fixBedResidualState(bed.getId());
             }
         }
 
-        // 2. 生成编号并保存入住记录（短事务，快速释放锁）
+        // 2. 本地事务：生成编号 + 保存入住记录
         entity.setRegisterNo(NumberGenerator.next("CI", prefix -> baseMapper.selectMaxByPrefix(prefix)));
         boolean saved = doSave(entity);
 
-        // 3. Feign 调用更新客户和床位状态（事务外，不持锁）
+        // 3. 跨服务状态同步（带自动重试，失败不回滚本地事务）
         if (saved) {
-            updateCustomerAndBed(entity);
+            syncAfterCheckIn(entity);
         }
         return saved;
     }
@@ -87,17 +87,18 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
         return super.save(entity);
     }
 
-    private void updateCustomerAndBed(CheckIn entity) {
+    /**
+     * 入住后的跨服务状态同步 — 使用 StateSyncService 自动重试
+     */
+    private void syncAfterCheckIn(CheckIn entity) {
+        // 更新客户入住状态
         if (entity.getCustomerId() != null) {
             try {
+                stateSyncService.markCustomerCheckedIn(entity.getCustomerId(), entity.getCheckInDate());
+
+                // 发送 MQ 事件
                 Customer c = customerFeignClient.getById(entity.getCustomerId()).getData();
                 if (c != null) {
-                    c.setCheckedIn(1);
-                    if (entity.getCheckInDate() != null) {
-                        c.setCheckInDate(entity.getCheckInDate());
-                    }
-                    customerFeignClient.updateById(c.getId(), c);
-
                     AiAnalysisEvent aiEvent = AiAnalysisEvent.of(
                             c.getId(), c.getName(), "HEALTH_ASSESSMENT");
                     rabbitTemplate.convertAndSend(MqConstants.EXCHANGE_AI,
@@ -111,19 +112,16 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
                     log.info("[MQ] 入住事件已发送: customer={}, checkIn={}", c.getName(), entity.getRegisterNo());
                 }
             } catch (Exception e) {
-                log.error("更新客户状态或发送MQ失败: {}", e.getMessage());
+                log.error("客户状态同步或MQ发送失败: {}", e.getMessage());
             }
         }
+
+        // 更新床位状态
         if (entity.getBedId() != null) {
             try {
-                Bed bed = bedFeignClient.getById(entity.getBedId()).getData();
-                if (bed != null) {
-                    bed.setCustomerId(entity.getCustomerId());
-                    bed.setStatus("已入住");
-                    bedFeignClient.updateById(bed.getId(), bed);
-                }
+                stateSyncService.assignBed(entity.getBedId(), entity.getCustomerId());
             } catch (Exception e) {
-                log.error("更新床位状态失败: {}", e.getMessage());
+                log.error("床位状态同步失败: {}", e.getMessage());
             }
         }
     }
@@ -154,11 +152,7 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
             long remaining = count(new LambdaQueryWrapper<CheckIn>()
                     .eq(CheckIn::getCustomerId, checkIn.getCustomerId()));
             if (remaining == 0 && checkIn.getCustomerId() != null) {
-                Customer c = customerFeignClient.getById(checkIn.getCustomerId()).getData();
-                if (c != null) {
-                    c.setCheckedIn(0);
-                    customerFeignClient.updateById(c.getId(), c);
-                }
+                stateSyncService.markCustomerCheckedOut(checkIn.getCustomerId());
             }
         } catch (Exception e) {
             log.error("释放客户状态失败: {}", e.getMessage());
@@ -167,15 +161,10 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
             long bedRemaining = count(new LambdaQueryWrapper<CheckIn>()
                     .eq(CheckIn::getBedId, checkIn.getBedId()));
             if (bedRemaining == 0 && checkIn.getBedId() != null) {
-                Bed bed = bedFeignClient.getById(checkIn.getBedId()).getData();
-                if (bed != null) {
-                    bed.setCustomerId(null);
-                    bed.setStatus("空闲");
-                    bedFeignClient.updateById(bed.getId(), bed);
-                }
+                stateSyncService.releaseBed(checkIn.getBedId());
             }
         } catch (Exception e) {
-            log.error("释放床位状态失败: {}", e.getMessage());
+            log.error("释放床位失败: {}", e.getMessage());
         }
     }
 }

@@ -124,10 +124,6 @@ services:
       NACOS_AUTH_IDENTITY_VALUE: "security"
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
-      NACOS_SERVER_PORT: 8848
-      JVM_XMS: 256m
-      JVM_XMX: 256m
-      JVM_XMN: 128m
       TZ: Asia/Shanghai
     ports:
       - "18848:8848"

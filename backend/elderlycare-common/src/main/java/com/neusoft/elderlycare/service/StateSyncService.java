@@ -4,9 +4,8 @@ import com.neusoft.elderlycare.entity.Bed;
 import com.neusoft.elderlycare.entity.Customer;
 import com.neusoft.elderlycare.feign.BedFeignClient;
 import com.neusoft.elderlycare.feign.CustomerFeignClient;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -20,15 +19,18 @@ import java.time.LocalDate;
  * 用于 checkin/checkout 模块在本地事务提交后，
  * 通过 Feign 调用更新 customer 和 bed 的状态。
  * 失败时自动重试 3 次（指数退避），全部失败后走 recover 兜底。
+ *
+ * Feign 客户端为可选依赖，仅在 checkin/checkout 模块中注入。
  */
 @Service
-@ConditionalOnBean({CustomerFeignClient.class, BedFeignClient.class})
-@RequiredArgsConstructor
 @Slf4j
 public class StateSyncService {
 
-    private final CustomerFeignClient customerFeignClient;
-    private final BedFeignClient bedFeignClient;
+    @Autowired(required = false)
+    private CustomerFeignClient customerFeignClient;
+
+    @Autowired(required = false)
+    private BedFeignClient bedFeignClient;
 
     /**
      * 标记客户已入住（带重试）
@@ -39,6 +41,10 @@ public class StateSyncService {
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     public void markCustomerCheckedIn(Long customerId, LocalDate checkInDate) {
+        if (customerFeignClient == null) {
+            log.warn("[StateSync] CustomerFeignClient 不可用，跳过客户入住状态同步");
+            return;
+        }
         Customer c = customerFeignClient.getById(customerId).getData();
         if (c == null) {
             log.warn("[StateSync] 客户不存在: customerId={}", customerId);
@@ -67,6 +73,10 @@ public class StateSyncService {
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     public void markCustomerCheckedOut(Long customerId) {
+        if (customerFeignClient == null) {
+            log.warn("[StateSync] CustomerFeignClient 不可用，跳过客户退住状态同步");
+            return;
+        }
         Customer c = customerFeignClient.getById(customerId).getData();
         if (c == null) {
             log.warn("[StateSync] 客户不存在: customerId={}", customerId);
@@ -92,6 +102,10 @@ public class StateSyncService {
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     public void assignBed(Long bedId, Long customerId) {
+        if (bedFeignClient == null) {
+            log.warn("[StateSync] BedFeignClient 不可用，跳过床位分配同步");
+            return;
+        }
         Bed bed = bedFeignClient.getById(bedId).getData();
         if (bed == null) {
             log.warn("[StateSync] 床位不存在: bedId={}", bedId);
@@ -118,6 +132,10 @@ public class StateSyncService {
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     public void releaseBed(Long bedId) {
+        if (bedFeignClient == null) {
+            log.warn("[StateSync] BedFeignClient 不可用，跳过床位释放同步");
+            return;
+        }
         Bed bed = bedFeignClient.getById(bedId).getData();
         if (bed == null) {
             log.warn("[StateSync] 床位不存在: bedId={}", bedId);
@@ -144,6 +162,10 @@ public class StateSyncService {
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     public void fixCustomerResidualState(Long customerId) {
+        if (customerFeignClient == null) {
+            log.warn("[StateSync] CustomerFeignClient 不可用，跳过客户状态修复");
+            return;
+        }
         Customer c = customerFeignClient.getById(customerId).getData();
         if (c != null && c.getCheckedIn() != null && c.getCheckedIn() == 1) {
             c.setCheckedIn(0);
@@ -167,6 +189,10 @@ public class StateSyncService {
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     public void fixBedResidualState(Long bedId) {
+        if (bedFeignClient == null) {
+            log.warn("[StateSync] BedFeignClient 不可用，跳过床位状态修复");
+            return;
+        }
         Bed bed = bedFeignClient.getById(bedId).getData();
         if (bed != null && !"空闲".equals(bed.getStatus())) {
             bed.setCustomerId(null);
