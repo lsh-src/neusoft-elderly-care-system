@@ -137,10 +137,7 @@ services:
   # 所有服务共享同一个镜像（backend/Dockerfile），通过 SERVICE_JAR 区分
   # ----------------------------------------------------------
   gateway:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-gateway
     restart: always
     environment:
@@ -166,7 +163,7 @@ services:
           memory: 1G
 
   auth:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-auth
     restart: always
     environment:
@@ -183,7 +180,7 @@ services:
           memory: 512M
 
   user:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-user
     restart: always
     environment:
@@ -200,7 +197,7 @@ services:
           memory: 512M
 
   customer:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-customer
     restart: always
     environment:
@@ -217,7 +214,7 @@ services:
           memory: 512M
 
   bed:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-bed
     restart: always
     environment:
@@ -234,7 +231,7 @@ services:
           memory: 512M
 
   checkin:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-checkin
     restart: always
     environment:
@@ -251,7 +248,7 @@ services:
           memory: 512M
 
   meal:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-meal
     restart: always
     environment:
@@ -268,7 +265,7 @@ services:
           memory: 512M
 
   service:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-service
     restart: always
     environment:
@@ -285,7 +282,7 @@ services:
           memory: 512M
 
   nursing:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-nursing
     restart: always
     environment:
@@ -302,7 +299,7 @@ services:
           memory: 512M
 
   dashboard:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-dashboard
     restart: always
     environment:
@@ -319,7 +316,7 @@ services:
           memory: 512M
 
   ai:
-    image: elderlycare-backend:latest
+    image: lsh20040102/elderlycare-backend:latest
     container_name: prod-ai
     restart: always
     environment:
@@ -339,10 +336,7 @@ services:
   # 前端层（Nginx 托管 + 反向代理）
   # ----------------------------------------------------------
   web:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    image: elderlycare-web:latest
+    image: lsh20040102/elderlycare-web:latest
     container_name: prod-web
     restart: always
     ports:
