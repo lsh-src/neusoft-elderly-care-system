@@ -1,0 +1,379 @@
+# ============================================================
+# 东软颐养中心管理系统 — 生产环境 Docker Compose
+#
+# 使用方式：
+#   cd docker
+#   cp .env.prod.example .env && vim .env    # 修改所有密码
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml logs -f         # 查看日志
+#   docker compose -f docker-compose.prod.yml down            # 停止
+#
+# 前置条件：
+#   - Docker 20.10+ 和 Docker Compose V2
+#   - 服务器内存 >= 8GB（推荐 16GB）
+#   - 已开放端口：80 (HTTP), 443 (HTTPS, 可选)
+# ============================================================
+
+# 通用环境变量（所有后端微服务共享）
+x-common-env: &common-env
+  SPRING_OPTS: "--spring.profiles.active=prod"
+  JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+  TZ: Asia/Shanghai
+  DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ChangeMe!Strong@2026}
+  RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-elderlycare}
+  RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ChangeMe!Strong@2026}
+  NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+  NACOS_PASSWORD: ${NACOS_PASSWORD:-ChangeMe!Strong@2026}
+  JWT_SECRET: ${JWT_SECRET:-ChangeMe!ToAtLeast32CharsLongSecretKey2026}
+
+services:
+  # ----------------------------------------------------------
+  # 基础设施层
+  # ----------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: prod-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ChangeMe!Strong@2026}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-ChangeMe!Strong@2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_0900_ai_ci
+      --default-time-zone=+08:00
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: prod-redis
+    restart: always
+    volumes:
+      - redis-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - backend-net
+    command: redis-server /usr/local/etc/redis/redis.conf
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: prod-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-elderlycare}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-ChangeMe!Strong@2026}
+      RABBITMQ_DEFAULT_VHOST: /
+      TZ: Asia/Shanghai
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: prod-nacos
+    restart: always
+    environment:
+      MODE: standalone
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_DB_NAME: nacos_config
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ChangeMe!Strong@2026}
+      MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      JVM_XMN: 128m
+      NACOS_AUTH_ENABLE: "true"
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-SecretKey012345678901234567890123456789012345678901234567890123456789}
+      NACOS_AUTH_IDENTITY_KEY: "serverIdentity"
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_IDENTITY_VALUE:-security}
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-ChangeMe!Strong@2026}
+      TZ: Asia/Shanghai
+    volumes:
+      - nacos-logs:/home/nacos/logs
+    networks:
+      - backend-net
+    depends_on:
+      mysql:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # ----------------------------------------------------------
+  # 后端微服务层
+  # 所有服务共享同一个镜像（backend/Dockerfile），通过 SERVICE_JAR 区分
+  # ----------------------------------------------------------
+  gateway:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: elderlycare-backend:latest
+    container_name: prod-gateway
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-gateway
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms512m -Xmx1g"
+    expose:
+      - "8080"
+    networks:
+      - backend-net
+    depends_on:
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  auth:
+    image: elderlycare-backend:latest
+    container_name: prod-auth
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-auth
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  user:
+    image: elderlycare-backend:latest
+    container_name: prod-user
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-user
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  customer:
+    image: elderlycare-backend:latest
+    container_name: prod-customer
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-customer
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  bed:
+    image: elderlycare-backend:latest
+    container_name: prod-bed
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-bed
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  checkin:
+    image: elderlycare-backend:latest
+    container_name: prod-checkin
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-checkin
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  meal:
+    image: elderlycare-backend:latest
+    container_name: prod-meal
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-meal
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  service:
+    image: elderlycare-backend:latest
+    container_name: prod-service
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-service
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  nursing:
+    image: elderlycare-backend:latest
+    container_name: prod-nursing
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-nursing
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  dashboard:
+    image: elderlycare-backend:latest
+    container_name: prod-dashboard
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-dashboard
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  ai:
+    image: elderlycare-backend:latest
+    container_name: prod-ai
+    restart: always
+    environment:
+      <<: *common-env
+      SERVICE_JAR: elderlycare-ai
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ----------------------------------------------------------
+  # 前端层（Nginx 托管 + 反向代理）
+  # ----------------------------------------------------------
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: elderlycare-web:latest
+    container_name: prod-web
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - backend-net
+    depends_on:
+      gateway:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+# ============================================================
+# 网络
+# ============================================================
+networks:
+  backend-net:
+    driver: bridge
+    name: elderlycare-prod-net
+
+# ============================================================
+# 数据卷
+# ============================================================
+volumes:
+  mysql-data:
+    name: prod-mysql-data
+  redis-data:
+    name: prod-redis-data
+  rabbitmq-data:
+    name: prod-rabbitmq-data
+  nacos-logs:
+    name: prod-nacos-logs
