@@ -29,7 +29,7 @@ request.interceptors.response.use(
     return result.data
   },
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       import('../stores/user').then(({ useUserStore }) => {
@@ -37,6 +37,10 @@ request.interceptors.response.use(
       }).catch(() => { /* ignore */ })
       router.push('/login')
       ElMessage.error('登录已过期，请重新登录')
+      return Promise.reject(error)
+    }
+    if (error.response?.status === 403) {
+      ElMessage.error('无权限访问该功能')
       return Promise.reject(error)
     }
     // blob 响应的错误需要读取 JSON 内容
