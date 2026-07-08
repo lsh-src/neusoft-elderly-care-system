@@ -14,17 +14,17 @@
 | elderlycare-rabbitmq | rabbitmq:3.13-management-alpine | Running | ✅ healthy |
 | elderlycare-nacos | nacos/nacos-server:v2.3.2 | Running | ✅ healthy |
 
-## 2. 端口映射（因端口冲突调整）
+## 2. 端口映射（使用默认端口）
 
-| 服务 | 容器内端口 | 宿主机端口 | 调整原因 |
-|------|-----------|-----------|---------|
-| MySQL | 3306 | 3306 | — |
-| Redis | 6379 | **6380** | 其他项目占用 6379 |
-| RabbitMQ AMQP | 5672 | **5673** | 本地 RabbitMQ 占用 5672 |
-| RabbitMQ Management | 15672 | **15673** | 同上 |
-| Nacos HTTP | 8848 | **18848** | Windows 端口保留范围 8755-8954 |
-| Nacos gRPC | 9848 | **19848** | 同上 |
-| Nacos gRPC | 9849 | **19849** | 同上 |
+| 服务 | 容器内端口 | 宿主机端口 |
+|------|-----------|-----------|
+| MySQL | 3306 | 3306 |
+| Redis | 6379 | 6379 |
+| RabbitMQ AMQP | 5672 | 5672 |
+| RabbitMQ Management | 15672 | 15672 |
+| Nacos HTTP | 8848 | 8848 |
+| Nacos gRPC | 9848 | 9848 |
+| Nacos gRPC | 9849 | 9849 |
 
 ## 3. 组件连通性测试
 
@@ -43,14 +43,14 @@
 ### Redis
 
 ```
-✓ 连接成功：redis-cli -h 127.0.0.1 -p 6380 -a 123456 PING → PONG
+✓ 连接成功：redis-cli -h 127.0.0.1 -p 6379 -a 123456 PING → PONG
 ✓ 读写测试通过
 ```
 
 ### RabbitMQ
 
 ```
-✓ 管理界面可访问：http://localhost:15673
+✓ 管理界面可访问：http://localhost:15672
 ✓ API 认证成功：guest/guest
 ✓ 版本：3.13.7
 ⚠ 队列预配置：已移除 definitions.json（因 vhost 初始化冲突）
@@ -61,7 +61,7 @@
 
 ```
 ✓ 健康检查通过：{"status":"UP"}
-✓ 管理界面可访问：http://localhost:18848/nacos
+✓ 管理界面可访问：http://localhost:8848/nacos
 ✓ 认证成功：nacos/nacos
 ✓ 版本：2.3.2
 ```
@@ -73,11 +73,11 @@
 ```yaml
 spring:
   rabbitmq:
-    port: ${RABBITMQ_PORT:5673}
+    port: ${RABBITMQ_PORT:5672}
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_ADDR:127.0.0.1:18848}
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
 ```
 
 **使用方式：** 启动后端时添加 `--spring.profiles.active=docker`
@@ -86,25 +86,25 @@ spring:
 
 | 变量 | 默认值 | Docker 值 | 说明 |
 |------|--------|----------|------|
-| `RABBITMQ_PORT` | 5672 | 5673 | Docker 端口映射 |
-| `NACOS_ADDR` | 127.0.0.1:8848 | 127.0.0.1:18848 | Docker 端口映射 |
+| `RABBITMQ_PORT` | 5672 | 5672 | 无需修改 |
+| `NACOS_ADDR` | 127.0.0.1:8848 | 127.0.0.1:8848 | 无需修改 |
 | `DB_URL` | localhost:3306 | localhost:3306 | 无需修改 |
 | `DB_USERNAME` | root | root | 无需修改 |
 | `DB_PASSWORD` | 123456 | 123456 | 无需修改 |
 
 ## 5. 已知问题及解决方案
 
-### 5.1 Windows 端口保留范围
+### 5.1 Windows 端口保留范围（已解决）
 
 **问题：** Windows 保留了 8755-8954 端口范围，导致 Nacos 无法使用 8848 端口。
 
-**解决：** 将 Nacos 映射到 18848 端口，通过 `application-docker.yml` 配置覆盖。
+**解决：** Docker Compose 端口映射已改为使用默认端口（8848），如遇端口冲突需手动处理 Windows 端口保留范围。
 
-### 5.2 本地 RabbitMQ 端口冲突
+### 5.2 本地 RabbitMQ 端口冲突（已解决）
 
 **问题：** 本地 RabbitMQ 服务占用 5672/15672 端口。
 
-**解决：** 将 Docker RabbitMQ 映射到 5673/15673 端口，通过 `application-docker.yml` 配置覆盖。
+**解决：** Docker Compose 端口映射已改为使用默认端口（5672/15672），如遇冲突需先停止本地 RabbitMQ 服务。
 
 ### 5.3 RabbitMQ definitions.json 冲突
 
@@ -120,10 +120,10 @@ spring:
 
 ```bash
 cd backend
-NACOS_ADDR=127.0.0.1:18848 RABBITMQ_PORT=5673 \
+NACOS_ADDR=127.0.0.1:8848 RABBITMQ_PORT=5672 \
 java -jar elderlycare-gateway/target/elderlycare-gateway-1.0.0.jar
 
-NACOS_ADDR=127.0.0.1:18848 RABBITMQ_PORT=5673 \
+NACOS_ADDR=127.0.0.1:8848 RABBITMQ_PORT=5672 \
 java -jar elderlycare-auth/target/elderlycare-auth-1.0.0.jar
 ```
 
@@ -165,9 +165,9 @@ java -jar elderlycare-auth/target/elderlycare-auth-1.0.0.jar
 
 ### 7.3 Nacos gRPC 端口映射
 
-**问题：** Nacos 2.x 使用 gRPC，客户端自动发现内部端口 9848，但 Docker 映射到 19848。
+**问题：** Nacos 2.x 使用 gRPC，客户端自动发现内部端口 9848。
 
-**解决：** 通过环境变量 `NACOS_ADDR=127.0.0.1:18848` 连接，Nacos 客户端自动计算 gRPC 端口为 18848+1000=19848。
+**解决：** Docker Compose 端口映射已改为使用默认端口（8848/9848/9849），Nacos 客户端自动计算 gRPC 端口为 8848+1000=9848。
 
 ## 8. 后续步骤
 

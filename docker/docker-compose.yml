@@ -12,9 +12,9 @@
 #
 # 端口映射（所有端口映射到 localhost，与现有配置兼容）：
 #   MySQL    : 3306
-#   Redis    : 6380 (因其他项目占用 6379，映射到 6380)
-#   RabbitMQ : 5673 (AMQP), 15673 (管理界面)  ← 因本地 RabbitMQ 占用 5672，映射到 5673
-#   Nacos    : 18848 (HTTP), 19848/19849 (gRPC)  ← 因 Windows 端口保留范围，映射到 18848
+#   Redis    : 6379
+#   RabbitMQ : 5672 (AMQP), 15672 (管理界面)
+#   Nacos    : 8848 (HTTP), 9848/9849 (gRPC)
 #
 # 后端启动时需添加 Docker profile：--spring.profiles.active=docker
 # ============================================================
@@ -59,7 +59,7 @@ services:
     environment:
       TZ: Asia/Shanghai
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redis-data:/data
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
@@ -85,8 +85,8 @@ services:
       RABBITMQ_DEFAULT_VHOST: /
       TZ: Asia/Shanghai
     ports:
-      - "5673:5672"
-      - "15673:15672"
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -126,9 +126,9 @@ services:
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
       TZ: Asia/Shanghai
     ports:
-      - "18848:8848"
-      - "19848:9848"
-      - "19849:9849"
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
     volumes:
       - nacos-logs:/home/nacos/logs
     networks:

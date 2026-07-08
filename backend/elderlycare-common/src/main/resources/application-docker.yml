@@ -1,23 +1,13 @@
 # ============================================================
 # Docker 环境专用配置
 # 使用方式：启动时添加 --spring.profiles.active=docker
-# 覆盖 application-common.yml 中的端口映射
-# 其他配置保持不变（localhost 默认值与 Docker 端口映射兼容）
+# Docker Compose 端口映射已使用默认端口，无需额外覆盖
 # ============================================================
 
 spring:
   rabbitmq:
-    port: ${RABBITMQ_PORT:5673}
+    port: ${RABBITMQ_PORT:5672}
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_ADDR:127.0.0.1:18848}
-
-# Nacos 2.x gRPC 端口映射（Docker 容器 9848 -> 宿主机 19848）
-nacos:
-  remote:
-    client:
-      rpc:
-        grpc:
-          server:
-            port: 19848
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}

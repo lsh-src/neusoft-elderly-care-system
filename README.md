@@ -471,8 +471,7 @@ bash healthcheck.sh
 
 > **注意：**
 > - 启动前需先停掉本地的 MySQL 服务，避免端口 3306 冲突
-> - Docker 端口映射：MySQL 3306 / Redis 6380 / RabbitMQ 5673+15673 / Nacos 18848
-> - 后端启动时需添加 `--spring.profiles.active=docker` 以适配端口映射
+> - Docker 端口映射使用默认端口：MySQL 3306 / Redis 6379 / RabbitMQ 5672+15672 / Nacos 8848
 
 详细说明见 [`docs/DOCKER_SETUP.md`](docs/DOCKER_SETUP.md)。
 

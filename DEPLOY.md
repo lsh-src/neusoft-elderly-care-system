@@ -62,8 +62,8 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 部署完成后访问：
 - **前端**: `http://your-server-ip`
-- **Nacos**: `http://your-server-ip:18848/nacos`
-- **RabbitMQ**: `http://your-server-ip:15673`
+- **Nacos**: `http://your-server-ip:8848/nacos`
+- **RabbitMQ**: `http://your-server-ip:15672`
 
 ---
 

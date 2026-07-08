@@ -39,9 +39,9 @@ docker-compose ps
 | 服务 | 验证方式 |
 |------|---------|
 | **MySQL** | `mysql -h 127.0.0.1 -P 3306 -u root -p123456 -e "SHOW DATABASES;"` |
-| **Redis** | `redis-cli -h 127.0.0.1 -p 6380 -a 123456 PING`（返回 PONG） |
-| **RabbitMQ** | 浏览器访问 http://localhost:15673（guest/guest） |
-| **Nacos** | 浏览器访问 http://localhost:18848/nacos（nacos/nacos） |
+| **Redis** | `redis-cli -h 127.0.0.1 -p 6379 -a 123456 PING`（返回 PONG） |
+| **RabbitMQ** | 浏览器访问 http://localhost:15672（guest/guest） |
+| **Nacos** | 浏览器访问 http://localhost:8848/nacos（nacos/nacos） |
 
 ### 4. 运行健康检查脚本
 
@@ -69,15 +69,15 @@ chmod +x docker/healthcheck.sh
 
 ### Redis 7.x
 
-- **端口：** 6380（因其他项目占用 6379，映射到 6380）
+- **端口：** 6379
 - **密码：** 123456（可在 .env 中修改）
 - **说明：** 当前项目未使用 Redis，为后续扩展预留
 - **数据持久化：** Docker volume `elderlycare-redis-data`
 
 ### RabbitMQ 3.13
 
-- **AMQP 端口：** 5673（因本地 RabbitMQ 占用 5672，映射到 5673）
-- **管理界面端口：** 15673
+- **AMQP 端口：** 5672
+- **管理界面端口：** 15672
 - **用户名：** guest
 - **密码：** guest（可在 .env 中修改）
 - **预配置队列：**
@@ -90,8 +90,8 @@ chmod +x docker/healthcheck.sh
 
 ### Nacos 2.3.2
 
-- **HTTP 端口：** 18848（因 Windows 端口保留范围，映射到 18848）
-- **gRPC 端口：** 19848, 19849
+- **HTTP 端口：** 8848
+- **gRPC 端口：** 9848, 9849
 - **用户名：** nacos
 - **密码：** nacos（可在 .env 中修改）
 - **运行模式：** standalone（单机模式）
