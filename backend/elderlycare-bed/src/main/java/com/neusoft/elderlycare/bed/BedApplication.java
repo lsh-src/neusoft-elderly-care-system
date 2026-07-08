@@ -8,21 +8,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@ComponentScan(basePackages = {
-    "com.neusoft.elderlycare",
-    "com.neusoft.elderlycare.bed",
-    "com.neusoft.elderlycare.config",
-    "com.neusoft.elderlycare.security",
-    "com.neusoft.elderlycare.service",
-    "com.neusoft.elderlycare.auth",
-    "com.neusoft.elderlycare.config",
-    "com.neusoft.elderlycare.security",
-    "com.neusoft.elderlycare.service",
-    "com.neusoft.elderlycare.bed.controller",
-    
-    
-    "com.neusoft.elderlycare.util"
-})
+@ComponentScan(basePackages = "com.neusoft.elderlycare")
 @MapperScan({"com.neusoft.elderlycare.bed.mapper", "com.neusoft.elderlycare.mapper"})
 public class BedApplication {
     public static void main(String[] args) {

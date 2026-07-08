@@ -10,14 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.neusoft.elderlycare.feign")
-@ComponentScan(basePackages = {
-    "com.neusoft.elderlycare",
-    "com.neusoft.elderlycare.meal",
-    "com.neusoft.elderlycare.config",
-    "com.neusoft.elderlycare.security",
-    "com.neusoft.elderlycare.service",
-    "com.neusoft.elderlycare.util"
-})
+@ComponentScan(basePackages = "com.neusoft.elderlycare")
 @MapperScan({"com.neusoft.elderlycare.meal.mapper", "com.neusoft.elderlycare.mapper"})
 public class MealApplication {
     public static void main(String[] args) {

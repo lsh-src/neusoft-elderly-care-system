@@ -6,25 +6,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.retry.annotation.EnableRetry;
 
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.neusoft.elderlycare.feign")
-@ComponentScan(basePackages = {
-    "com.neusoft.elderlycare",
-    "com.neusoft.elderlycare.checkin",
-    "com.neusoft.elderlycare.config",
-    "com.neusoft.elderlycare.security",
-    "com.neusoft.elderlycare.service",
-    "com.neusoft.elderlycare.auth",
-    "com.neusoft.elderlycare.config",
-    "com.neusoft.elderlycare.security",
-    "com.neusoft.elderlycare.service",
-    "com.neusoft.elderlycare.checkin.controller",
-    
-    
-    "com.neusoft.elderlycare.util"
-})
+@EnableRetry
+@ComponentScan(basePackages = "com.neusoft.elderlycare")
 @MapperScan({"com.neusoft.elderlycare.checkin.mapper", "com.neusoft.elderlycare.mapper"})
 public class CheckInModuleApplication {
     public static void main(String[] args) {

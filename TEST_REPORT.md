@@ -3,7 +3,7 @@
 > **项目名称：** 东软颐养中心管理系统（Neusoft Elderly Care System）
 > **测试日期：** 2026-07-08
 > **测试框架：** JUnit 5 + Mockito（后端）| Vitest + happy-dom（前端）
-> **测试总数：** 130 | **通过：** 130 | **失败：** 0 | **跳过：** 0
+> **测试总数：** 141 | **通过：** 141 | **失败：** 0 | **跳过：** 0
 
 ---
 
@@ -15,16 +15,16 @@
 ├─────────────────────┬───────────┬───────────┬──────────────────┤
 │       层级          │  测试文件  │  测试用例  │      状态        │
 ├─────────────────────┼───────────┼───────────┼──────────────────┤
-│  后端 (Java)        │     7     │    60     │  ✅ 全部通过     │
+│  后端 (Java)        │     8     │    71     │  ✅ 全部通过     │
 │  前端 (JavaScript)  │     3     │    70     │  ✅ 全部通过     │
 ├─────────────────────┼───────────┼───────────┼──────────────────┤
-│  合计               │    10     │   130     │  ✅ 100% 通过    │
+│  合计               │    11     │   141     │  ✅ 100% 通过    │
 └─────────────────────┴───────────┴───────────┴──────────────────┘
 ```
 
 ---
 
-## 🔧 后端测试详情（60 个用例）
+## 🔧 后端测试详情（71 个用例）
 
 ### 1. ApiResponseTest — 统一响应封装（7 个用例）
 
@@ -107,7 +107,23 @@
 | 8 | 不同用户 token | 不同用户生成不同 token | ✅ |
 | 9 | 未初始化异常 | 未调用 init() 时抛异常 | ✅ |
 
-### 7. NumberGeneratorTest — 编号生成器（9 个用例）
+### 7. StateSyncServiceTest — 跨服务状态同步（11 个用例）
+
+| # | 测试场景 | 预期结果 | 状态 |
+|---|----------|----------|------|
+| 1 | markCustomerCheckedIn 正常 | 客户状态更新为已入住 | ✅ |
+| 2 | markCustomerCheckedIn 客户不存在 | 跳过并记录警告 | ✅ |
+| 3 | markCustomerCheckedIn Feign不可用 | 跳过并记录警告 | ✅ |
+| 4 | markCustomerCheckedOut 正常 | 客户状态更新为未入住 | ✅ |
+| 5 | markCustomerCheckedOut 客户不存在 | 跳过并记录警告 | ✅ |
+| 6 | assignBed 正常 | 床位状态更新为已入住 | ✅ |
+| 7 | assignBed 床位不存在 | 跳过并记录警告 | ✅ |
+| 8 | releaseBed 正常 | 床位状态更新为空闲 | ✅ |
+| 9 | releaseBed 床位不存在 | 跳过并记录警告 | ✅ |
+| 10 | fixCustomerResidualState | 修复客户残留入住状态 | ✅ |
+| 11 | fixBedResidualState | 修复床位残留状态 | ✅ |
+
+### 8. NumberGeneratorTest — 编号生成器（9 个用例）
 
 | # | 测试场景 | 输入 | 预期输出 | 状态 |
 |---|----------|------|----------|------|
@@ -190,6 +206,45 @@
 
 ---
 
+## 🔍 代码审查发现与修复
+
+### 🔴 HIGH — 已修复
+
+#### 1. UserController 密码未加密存储
+
+**文件：** `backend/elderlycare-user/.../UserController.java`  
+**问题：** `UserController` 继承 `BaseCrudController` 的通用 `create/update` 方法，直接调用 `service().save(body)` 保存用户，**密码未经过 BCrypt 加密**，导致管理员创建的用户密码以明文形式存储在数据库中。  
+**影响：** 数据库中存在明文密码记录（id=31, 40），存在严重安全风险。  
+**修复：** 重写 `create()` 和 `update()` 方法，在保存前对密码进行 BCrypt 加密；update 时如果密码为空则不更新密码字段。
+
+### 🟡 MEDIUM — 已修复
+
+#### 2. 多个模块 Application 类 ComponentScan 重复配置
+
+**文件：** 7 个模块的 `*Application.java`  
+**问题：** `CheckInModuleApplication`、`CustomerApplication`、`DashboardApplication`、`BedApplication` 等多个模块的 `@ComponentScan` 注解中存在大量重复的包扫描配置。  
+**影响：** 启动时重复扫描相同包，略微影响启动性能；代码维护困难。  
+**修复：** 统一简化为 `@ComponentScan(basePackages = "com.neusoft.elderlycare")`。
+
+**涉及文件：**
+- `elderlycare-checkin/.../CheckInModuleApplication.java`
+- `elderlycare-customer/.../CustomerApplication.java`
+- `elderlycare-dashboard/.../DashboardApplication.java`
+- `elderlycare-bed/.../BedApplication.java`
+- `elderlycare-meal/.../MealApplication.java`
+- `elderlycare-service/.../ServiceModuleApplication.java`
+- `elderlycare-nursing/.../NursingApplication.java`
+
+### 🟢 LOW — 已知问题
+
+#### 3. 数据库中存在明文密码记录
+
+**数据：** `sys_user` 表 id=31（密码 `1234546`）、id=40（密码 `123456`）  
+**原因：** 可能是手动插入或通过未加密的旧版本创建  
+**建议：** 手动更新这些记录的密码为 BCrypt 加密值
+
+---
+
 ## 📈 测试覆盖矩阵
 
 | 模块 | 单元测试 | 集成测试 | 覆盖率评估 |
@@ -200,6 +255,7 @@
 | FeignAuthInterceptor（JWT 转发） | ✅ 5 | — | 高（含边界条件） |
 | BaseEntity / SysUser（实体） | ✅ 10 | — | 高 |
 | JwtTokenProvider（JWT 令牌） | ✅ 9 | — | 高（含安全边界） |
+| StateSyncService（状态同步） | ✅ 11 | — | 高（含异常场景） |
 | NumberGenerator（编号生成） | ✅ 9 | — | 高（含异常降级） |
 | moduleConfig（前端配置） | ✅ 21 | — | 高（覆盖所有模块） |
 | router / menuGroups（路由权限） | ✅ 30 | — | 高（含角色矩阵） |
@@ -218,6 +274,7 @@
 | Feign JWT 转发 | 空白/空/缺失 token 不转发 | ✅ |
 | 401 vs 403 处理分离 | 401 清除 token，403 仅提示 | ✅ |
 | 权限矩阵 | 4 种角色 × 21 个模块全覆盖 | ✅ |
+| **密码加密（新增）** | **UserController 密码 BCrypt 加密** | ✅ |
 
 ---
 
@@ -238,18 +295,27 @@
 | 构建目标 | 命令 | 结果 | 耗时 |
 |----------|------|------|------|
 | 后端编译 | `mvn clean compile` | ✅ 12 模块全部通过 | ~31s |
-| 后端测试 | `mvn test` | ✅ 60/60 通过 | ~26s |
+| 后端测试 | `mvn test` | ✅ 71/71 通过 | ~26s |
 | 前端构建 | `npm run build` | ✅ 2245 模块转换 | ~13s |
 | 前端测试 | `npx vitest run` | ✅ 70/70 通过 | ~4s |
 
 ---
 
-## 📋 测试用例设计原则
+## 📋 修复文件清单
 
-| 原则 | 说明 |
-|------|------|
-| **正常输入** | 验证标准业务流程的正确性 |
-| **边界条件** | 空值、null、空字符串、最大/最小值 |
-| **异常输入** | 篡改数据、格式错误、类型不匹配 |
-| **安全边界** | 密码泄露、token 篡改、权限越界 |
-| **降级处理** | 异常格式降级、缺失配置降级 |
+| 文件 | 修改类型 | 说明 |
+|------|---------|------|
+| `backend/elderlycare-user/.../UserController.java` | BUG修复 | 密码 BCrypt 加密 |
+| `backend/elderlycare-checkin/.../CheckInModuleApplication.java` | 优化 | 简化 ComponentScan |
+| `backend/elderlycare-customer/.../CustomerApplication.java` | 优化 | 简化 ComponentScan |
+| `backend/elderlycare-dashboard/.../DashboardApplication.java` | 优化 | 简化 ComponentScan |
+| `backend/elderlycare-bed/.../BedApplication.java` | 优化 | 简化 ComponentScan |
+| `backend/elderlycare-meal/.../MealApplication.java` | 优化 | 简化 ComponentScan |
+| `backend/elderlycare-service/.../ServiceModuleApplication.java` | 优化 | 简化 ComponentScan |
+| `backend/elderlycare-nursing/.../NursingApplication.java` | 优化 | 简化 ComponentScan |
+
+---
+
+## ✅ 结论
+
+本次审查发现并修复了 **1 个高危安全问题**（密码未加密）和 **7 个代码质量问题**（重复配置）。所有 **141 个测试用例全部通过**，修复未影响现有功能。
