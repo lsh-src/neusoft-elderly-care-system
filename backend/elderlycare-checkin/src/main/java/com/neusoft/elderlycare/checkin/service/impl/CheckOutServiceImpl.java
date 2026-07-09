@@ -47,13 +47,19 @@ public class CheckOutServiceImpl extends ServiceImpl<CheckOutMapper, CheckOut> i
         Customer c = customerFeignClient.getById(entity.getCustomerId()).getData();
         if (c == null) throw new BusinessException("客户不存在");
 
-        boolean hasActiveCheckIn = checkInService.count(new LambdaQueryWrapper<CheckIn>()
-                .eq(CheckIn::getCustomerId, entity.getCustomerId())) > 0;
-        if (!hasActiveCheckIn) {
-            if (c.getCheckedIn() != null && c.getCheckedIn() == 1) {
-                // 修复残留状态（带重试）
-                stateSyncService.fixCustomerResidualState(c.getId());
-            }
+        if (c.getCheckedIn() == null || c.getCheckedIn() == 0) {
+            throw new BusinessException("该客户未入住，不能办理退住");
+        }
+
+        // 找到当前活跃的入住记录
+        var activeCheckIn = checkInService.list(new LambdaQueryWrapper<CheckIn>()
+                .eq(CheckIn::getCustomerId, entity.getCustomerId())
+                .orderByDesc(CheckIn::getId))
+                .stream().findFirst().orElse(null);
+
+        if (activeCheckIn == null) {
+            // 修复残留状态
+            stateSyncService.fixCustomerResidualState(c.getId());
             throw new BusinessException("该客户未入住，不能办理退住");
         }
 
@@ -61,24 +67,10 @@ public class CheckOutServiceImpl extends ServiceImpl<CheckOutMapper, CheckOut> i
         entity.setCheckoutNo(NumberGenerator.next("CO", prefix -> baseMapper.selectMaxByPrefix(prefix)));
         boolean saved = doSave(entity);
 
-        // 3. 跨服务状态同步（带自动重试，失败不回滚本地事务）
+        // 3. 删除对应的入住记录（触发器会自动释放客户状态和床位）
         if (saved) {
-            try {
-                stateSyncService.markCustomerCheckedOut(entity.getCustomerId());
-            } catch (Exception e) {
-                log.error("客户退住状态同步失败: {}", e.getMessage());
-            }
-
-            // 释放床位
-            try {
-                var activeCheckIn = checkInService.list(new LambdaQueryWrapper<CheckIn>()
-                        .eq(CheckIn::getCustomerId, entity.getCustomerId())).stream().findFirst().orElse(null);
-                if (activeCheckIn != null && activeCheckIn.getBedId() != null) {
-                    stateSyncService.releaseBed(activeCheckIn.getBedId());
-                }
-            } catch (Exception e) {
-                log.error("释放床位失败: {}", e.getMessage());
-            }
+            checkInService.removeById(activeCheckIn.getId());
+            log.info("[退住] 已删除入住记录: checkInId={}, customer={}", activeCheckIn.getId(), c.getName());
         }
         return saved;
     }

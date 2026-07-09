@@ -43,10 +43,10 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
             Customer c = customerFeignClient.getById(entity.getCustomerId()).getData();
             if (c == null) throw new BusinessException("客户不存在");
 
-            boolean hasActiveCheckIn = count(new LambdaQueryWrapper<CheckIn>()
-                    .eq(CheckIn::getCustomerId, entity.getCustomerId())) > 0;
+            // 检查是否有「未退住」的入住记录（LEFT JOIN check_out 为空 = 未退住）
+            boolean hasActiveCheckIn = checkInMapper.countActiveCheckIn(entity.getCustomerId()) > 0;
             if (hasActiveCheckIn) {
-                throw new BusinessException("该客户已入住，不能重复入住");
+                throw new BusinessException("该客户当前已入住，不能重复入住");
             }
 
             // 修复残留状态（带重试）
@@ -59,8 +59,8 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
             Bed bed = bedFeignClient.getById(entity.getBedId()).getData();
             if (bed == null) throw new BusinessException("床位不存在");
 
-            boolean bedOccupied = count(new LambdaQueryWrapper<CheckIn>()
-                    .eq(CheckIn::getBedId, entity.getBedId())) > 0;
+            // 检查床位是否有「未退住」的入住记录
+            boolean bedOccupied = checkInMapper.countActiveCheckInByBed(entity.getBedId()) > 0;
             if (bedOccupied) {
                 throw new BusinessException("该床位已被占用，无法分配");
             }
