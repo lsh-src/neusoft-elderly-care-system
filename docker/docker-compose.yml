@@ -127,8 +127,8 @@ services:
       TZ: Asia/Shanghai
     ports:
       - "8848:8848"
-      - "9848:9848"
-      - "9849:9849"
+      # gRPC 端口 9848/9849 不需要映射到宿主机
+      # 微服务在 Docker 内部网络通过容器名直连 Nacos
     volumes:
       - nacos-logs:/home/nacos/logs
     networks:
@@ -142,6 +142,211 @@ services:
       timeout: 10s
       retries: 10
       start_period: 40s
+
+  # ----------------------------------------------------------
+  # 后端微服务层
+  # 所有服务共享同一个镜像，通过 SERVICE_JAR 区分模块
+  # ----------------------------------------------------------
+
+  gateway:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-gateway
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-gateway
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      NACOS_ADDR: "nacos:8848"
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    networks:
+      - project-net
+    depends_on:
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  auth:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-auth
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-auth
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  user:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-user
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-user
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  customer:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-customer
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-customer
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  bed:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-bed
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-bed
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  checkin:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-checkin
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-checkin
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  meal:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-meal
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-meal
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  service:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-service
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-service
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  nursing:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-nursing
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-nursing
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  dashboard:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-dashboard
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-dashboard
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
+
+  ai:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: elderlycare-ai
+    restart: unless-stopped
+    environment:
+      SERVICE_JAR: elderlycare-ai
+      SPRING_OPTS: "--spring.profiles.active=docker"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+      AI_API_KEY: "${AI_API_KEY:-sk-ck6q7y9l8092gtr3tebig9wttng5cv8dp626ha0txqi4yqu9}"
+      AI_BASE_URL: "${AI_BASE_URL:-https://api.xiaomimimo.com/anthropic}"
+      AI_MODEL: "${AI_MODEL:-mimo-v2.5}"
+      AI_EMBEDDING_MODEL: "${AI_EMBEDDING_MODEL:-text-embedding-v1}"
+      TZ: Asia/Shanghai
+    networks:
+      - project-net
+    depends_on:
+      gateway:
+        condition: service_started
 
 # ============================================================
 # 网络配置

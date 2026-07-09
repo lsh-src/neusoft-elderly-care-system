@@ -68,7 +68,7 @@ check_container() {
 }
 
 echo "---------- 组件健康检查 ----------"
-check_container "eldercare-mysql" "MySQL"
+check_container "elderlycare-mysql" "MySQL"
 check_container "elderlycare-redis" "Redis"
 check_container "elderlycare-rabbitmq" "RabbitMQ"
 check_container "elderlycare-nacos" "Nacos"

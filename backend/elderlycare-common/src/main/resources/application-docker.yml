@@ -1,13 +1,18 @@
 # ============================================================
-# Docker 环境专用配置
-# 使用方式：启动时添加 --spring.profiles.active=docker
-# Docker Compose 端口映射已使用默认端口，无需额外覆盖
+# Docker 容器环境专用配置
+# 服务通过 --spring.profiles.active=docker 激活
+# 所有地址使用 Docker 内部容器名，不走 localhost
 # ============================================================
 
 spring:
-  rabbitmq:
-    port: ${RABBITMQ_PORT:5672}
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        server-addr: nacos:8848
+  datasource:
+    url: jdbc:mysql://mysql:3306/neusoft_elderly_care?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+  rabbitmq:
+    host: rabbitmq
+    listener:
+      simple:
+        auto-startup: true

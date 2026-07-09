@@ -25,38 +25,70 @@ public class LlmService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 调用 LLM 进行对话
+     * 调用 LLM 进行对话（兼容 Anthropic Messages API 和 OpenAI API）
      */
     public String chat(String systemPrompt, String userMessage) {
         try {
-            String url = aiConfig.getBaseUrl() + "/v1/chat/completions";
+            String baseUrl = aiConfig.getBaseUrl();
+            boolean isAnthropic = baseUrl.contains("anthropic");
 
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", aiConfig.getModel());
-            body.put("max_tokens", aiConfig.getMaxTokens());
-            body.put("temperature", aiConfig.getTemperature());
-
-            List<Map<String, String>> messages = new ArrayList<>();
-            if (systemPrompt != null && !systemPrompt.isBlank()) {
-                messages.add(Map.of("role", "system", "content", systemPrompt));
-            }
-            messages.add(Map.of("role", "user", "content", userMessage));
-            body.put("messages", messages);
-
+            String url;
+            Map<String, Object> body;
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(aiConfig.getApiKey());
+
+            if (isAnthropic) {
+                // Anthropic Messages API 格式
+                url = baseUrl + "/v1/messages";
+                headers.set("x-api-key", aiConfig.getApiKey());
+                headers.set("anthropic-version", "2023-06-01");
+
+                body = new LinkedHashMap<>();
+                body.put("model", aiConfig.getModel());
+                body.put("max_tokens", aiConfig.getMaxTokens());
+                body.put("temperature", aiConfig.getTemperature());
+                if (systemPrompt != null && !systemPrompt.isBlank()) {
+                    body.put("system", systemPrompt);
+                }
+                body.put("messages", List.of(Map.of("role", "user", "content", userMessage)));
+            } else {
+                // OpenAI 兼容格式
+                url = baseUrl + "/v1/chat/completions";
+                headers.setBearerAuth(aiConfig.getApiKey());
+
+                body = new LinkedHashMap<>();
+                body.put("model", aiConfig.getModel());
+                body.put("max_tokens", aiConfig.getMaxTokens());
+                body.put("temperature", aiConfig.getTemperature());
+                List<Map<String, String>> messages = new ArrayList<>();
+                if (systemPrompt != null && !systemPrompt.isBlank()) {
+                    messages.add(Map.of("role", "system", "content", systemPrompt));
+                }
+                messages.add(Map.of("role", "user", "content", userMessage));
+                body.put("messages", messages);
+            }
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-
             JsonNode json = objectMapper.readTree(response.getBody());
-            JsonNode message = json.path("choices").path(0).path("message");
 
-            // 优先取 content，若为空则取 reasoning_content（MiMo 推理模型兼容）
-            String content = message.path("content").asText("");
-            if (content.isBlank()) {
-                content = message.path("reasoning_content").asText("暂无回复");
+            // 解析响应
+            String content;
+            if (isAnthropic) {
+                // Anthropic 响应: {"content": [{"type":"text","text":"..."}]}
+                JsonNode contentArray = json.path("content");
+                if (contentArray.isArray() && contentArray.size() > 0) {
+                    content = contentArray.get(0).path("text").asText("暂无回复");
+                } else {
+                    content = "暂无回复";
+                }
+            } else {
+                // OpenAI 响应: {"choices": [{"message": {"content": "..."}}]}
+                JsonNode message = json.path("choices").path(0).path("message");
+                content = message.path("content").asText("");
+                if (content.isBlank()) {
+                    content = message.path("reasoning_content").asText("暂无回复");
+                }
             }
             return content;
         } catch (Exception e) {

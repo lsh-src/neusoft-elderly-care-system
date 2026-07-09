@@ -16,8 +16,8 @@ spring:
         auto-startup: true
 
 ai:
-  api-key: ${AI_API_KEY:sk-c8rx80l4zs3ti1qvnsm4vgw2du2b5fg4uuqu8yva0f6bjbkx}
-  base-url: ${AI_BASE_URL:https://api.xiaomimimo.com}
+  api-key: ${AI_API_KEY:your-api-key}
+  base-url: ${AI_BASE_URL:https://api.xiaomimimo.com/anthropic}
   model: ${AI_MODEL:mimo-v2.5}
   embedding-model: ${AI_EMBEDDING_MODEL:text-embedding-v1}
   max-tokens: ${AI_MAX_TOKENS:2048}
